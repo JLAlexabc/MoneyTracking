@@ -1,0 +1,17 @@
+{
+  "name": "拾账 - 生活开销分析",
+  "short_name": "拾账",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f6f7f4",
+  "theme_color": "#0f6b63",
+  "description": "记录生活开销、识别小票金额、分类统计并展示数据分析。",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
