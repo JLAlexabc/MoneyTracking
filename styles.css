@@ -47,6 +47,45 @@ button {
   cursor: pointer;
 }
 
+.auth-screen {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+}
+
+.auth-card {
+  width: min(460px, 100%);
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--shadow);
+}
+
+.auth-copy {
+  margin: 12px 0 18px;
+  color: var(--muted);
+}
+
+.auth-segmented {
+  margin-bottom: 14px;
+}
+
+.auth-segmented button {
+  flex: 1;
+}
+
+.auth-form {
+  display: grid;
+  gap: 12px;
+}
+
+.auth-form small {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
 .app-shell {
   width: min(1180px, 100%);
   margin: 0 auto;

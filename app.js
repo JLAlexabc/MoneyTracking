@@ -9,19 +9,31 @@ const categories = [
   { id: "other", label: "其他", color: "#75817b", icon: "其", keywords: [] }
 ];
 
-const storageKey = "moneytracking.expenses.v1";
+const legacyStorageKey = "moneytracking.expenses.v1";
+const profileRegistryKey = "moneytracking.profiles.v1";
+const storagePrefix = "moneytracking.expenses.profile.";
+let storageKey = "";
 const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 const dateFmt = new Intl.DateTimeFormat("zh-CN", { month: "short", day: "numeric" });
 
 const state = {
-  expenses: loadExpenses(),
+  expenses: [],
   activeMonth: monthKey(new Date()),
   mode: "manual",
   pendingImports: [],
-  selectedCategoryId: ""
+  selectedCategoryId: "",
+  authMode: "login",
+  profileHash: ""
 };
 
 const els = {
+  authScreen: document.querySelector("#authScreen"),
+  appShell: document.querySelector("#appShell"),
+  authForm: document.querySelector("#authForm"),
+  authPassword: document.querySelector("#authPassword"),
+  authSubmit: document.querySelector("#authSubmit"),
+  authMessage: document.querySelector("#authMessage"),
+  lockApp: document.querySelector("#lockApp"),
   currentMonth: document.querySelector("#currentMonth"),
   prevMonth: document.querySelector("#prevMonth"),
   nextMonth: document.querySelector("#nextMonth"),
@@ -98,6 +110,11 @@ function init() {
   document.querySelectorAll("[data-entry-mode]").forEach((button) => {
     button.addEventListener("click", () => switchMode(button.dataset.entryMode));
   });
+  document.querySelectorAll("[data-auth-mode]").forEach((button) => {
+    button.addEventListener("click", () => switchAuthMode(button.dataset.authMode));
+  });
+  els.authForm.addEventListener("submit", handleAuthSubmit);
+  els.lockApp.addEventListener("click", lockApp);
   els.prevMonth.addEventListener("click", () => shiftMonth(-1));
   els.nextMonth.addEventListener("click", () => shiftMonth(1));
   els.currentMonth.addEventListener("click", () => {
@@ -132,7 +149,103 @@ function init() {
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("sw.js").catch(() => {});
   }
+  switchAuthMode(getProfiles().length ? "login" : "create");
+}
+
+function switchAuthMode(mode) {
+  state.authMode = mode;
+  document.querySelectorAll("[data-auth-mode]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.authMode === mode);
+  });
+  els.authSubmit.textContent = mode === "create" ? "创建并进入" : "进入账本";
+  els.authPassword.autocomplete = mode === "create" ? "new-password" : "current-password";
+  els.authMessage.textContent = mode === "create"
+    ? "请设置一串独特密码。以后输入同一密码即可进入这个账本。"
+    : "输入已设置的账本密码。不同密码会进入不同账本。";
+}
+
+async function handleAuthSubmit(event) {
+  event.preventDefault();
+  const password = els.authPassword.value.trim();
+  if (password.length < 4) {
+    els.authMessage.textContent = "密码至少需要 4 个字符。";
+    return;
+  }
+
+  const hash = await hashPassword(password);
+  const profiles = getProfiles();
+  const exists = profiles.includes(hash);
+  if (state.authMode === "login" && !exists) {
+    els.authMessage.textContent = "没有找到这个账本。请切换到“新建账本”先设置密码。";
+    return;
+  }
+  if (state.authMode === "create" && exists) {
+    els.authMessage.textContent = "这个密码对应的账本已存在，请直接进入账本。";
+    return;
+  }
+
+  if (state.authMode === "create") {
+    profiles.push(hash);
+    localStorage.setItem(profileRegistryKey, JSON.stringify(profiles));
+  }
+
+  unlockProfile(hash);
+}
+
+function unlockProfile(hash) {
+  state.profileHash = hash;
+  storageKey = `${storagePrefix}${hash}`;
+  state.expenses = loadExpenses();
+  migrateLegacyExpensesIfNeeded();
+  state.activeMonth = monthKey(new Date());
+  state.selectedCategoryId = "";
+  state.pendingImports = [];
+  els.authPassword.value = "";
+  els.authScreen.hidden = true;
+  els.appShell.hidden = false;
   render();
+}
+
+function lockApp() {
+  state.profileHash = "";
+  storageKey = "";
+  state.expenses = [];
+  state.selectedCategoryId = "";
+  state.pendingImports = [];
+  setEntryDrawer(false);
+  els.appShell.hidden = true;
+  els.authScreen.hidden = false;
+  switchAuthMode(getProfiles().length ? "login" : "create");
+  window.setTimeout(() => els.authPassword.focus(), 0);
+}
+
+async function hashPassword(password) {
+  const data = new TextEncoder().encode(`MoneyTracking:${password}`);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function getProfiles() {
+  try {
+    return JSON.parse(localStorage.getItem(profileRegistryKey) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function migrateLegacyExpensesIfNeeded() {
+  if (state.expenses.length || localStorage.getItem(storageKey)) return;
+  const legacy = localStorage.getItem(legacyStorageKey);
+  if (!legacy) return;
+  try {
+    const parsed = JSON.parse(legacy);
+    if (Array.isArray(parsed) && parsed.length) {
+      state.expenses = parsed;
+      saveExpenses();
+    }
+  } catch {
+    // Ignore malformed legacy data.
+  }
 }
 
 function setEntryDrawer(open) {

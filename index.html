@@ -7,10 +7,30 @@
     <meta name="description" content="生活开销记录、票据识别、分类统计与数据分析">
     <title>拾账 - 生活开销分析</title>
     <link rel="manifest" href="manifest.webmanifest">
-    <link rel="stylesheet" href="styles.css?v=25">
+    <link rel="stylesheet" href="styles.css?v=26">
   </head>
   <body>
-    <div class="app-shell">
+    <section class="auth-screen" id="authScreen">
+      <div class="auth-card">
+        <p class="eyebrow">多用户本地账本</p>
+        <h1>拾账</h1>
+        <p class="auth-copy">输入你的独特密码进入账本。新用户先设置密码创建独立账本。</p>
+        <div class="segmented auth-segmented" role="tablist" aria-label="进入方式">
+          <button type="button" class="active" data-auth-mode="login">进入账本</button>
+          <button type="button" data-auth-mode="create">新建账本</button>
+        </div>
+        <form id="authForm" class="auth-form">
+          <label>
+            <span>账本密码</span>
+            <input id="authPassword" type="password" autocomplete="current-password" minlength="4" placeholder="输入一串只有你知道的密码" required>
+          </label>
+          <button class="primary-button" type="submit" id="authSubmit">进入账本</button>
+          <small id="authMessage">数据保存在当前浏览器，本网站不会上传你的密码。</small>
+        </form>
+      </div>
+    </section>
+
+    <div class="app-shell" id="appShell" hidden>
       <header class="topbar">
         <div>
           <p class="eyebrow">个人生活开销</p>
@@ -22,6 +42,7 @@
             <button class="month-button" type="button" id="currentMonth"></button>
             <button class="icon-button" type="button" id="nextMonth" aria-label="下个月">›</button>
           </div>
+          <button class="secondary-button" type="button" id="lockApp">切换用户</button>
           <button class="primary-button add-toggle" type="button" id="openEntry">添加开销</button>
         </div>
       </header>
@@ -213,6 +234,6 @@
       </article>
     </template>
 
-    <script src="app.js?v=25"></script>
+    <script src="app.js?v=26"></script>
   </body>
 </html>
