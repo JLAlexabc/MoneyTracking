@@ -7,7 +7,7 @@
     <meta name="description" content="生活开销记录、票据识别、分类统计与数据分析">
     <title>拾账 - 生活开销分析</title>
     <link rel="manifest" href="manifest.webmanifest">
-    <link rel="stylesheet" href="styles.css?v=26">
+    <link rel="stylesheet" href="styles.css?v=27">
   </head>
   <body>
     <section class="auth-screen" id="authScreen">
@@ -211,6 +211,11 @@
               <p id="recordSummary">所有记录保存在本机浏览器。</p>
             </div>
             <div class="record-actions">
+              <button type="button" class="secondary-button" id="exportLedger">导出账本</button>
+              <label class="secondary-button import-ledger-button">
+                导入账本
+                <input type="file" id="importLedger" accept="application/json,.json">
+              </label>
               <button type="button" class="secondary-button" id="seedDemo">示例数据</button>
               <button type="button" class="secondary-button danger" id="clearAll">清空</button>
             </div>
@@ -234,6 +239,6 @@
       </article>
     </template>
 
-    <script src="app.js?v=26"></script>
+    <script src="app.js?v=27"></script>
   </body>
 </html>

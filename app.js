@@ -85,6 +85,8 @@ const els = {
   insightList: document.querySelector("#insightList"),
   recordsList: document.querySelector("#recordsList"),
   recordSummary: document.querySelector("#recordSummary"),
+  exportLedger: document.querySelector("#exportLedger"),
+  importLedger: document.querySelector("#importLedger"),
   seedDemo: document.querySelector("#seedDemo"),
   clearAll: document.querySelector("#clearAll")
 };
@@ -143,6 +145,8 @@ function init() {
   els.categoryDetailChart.addEventListener("mousemove", handleCategoryDetailHover);
   els.categoryDetailChart.addEventListener("mouseleave", hideCategoryDetailTooltip);
   els.trendChart.addEventListener("click", handleYearChartClick);
+  els.exportLedger.addEventListener("click", exportLedgerFile);
+  els.importLedger.addEventListener("change", importLedgerFile);
   els.seedDemo.addEventListener("click", seedDemoData);
   els.clearAll.addEventListener("click", clearAllData);
 
@@ -154,6 +158,7 @@ function init() {
 
 function switchAuthMode(mode) {
   state.authMode = mode;
+  els.authPassword.value = "";
   document.querySelectorAll("[data-auth-mode]").forEach((button) => {
     button.classList.toggle("active", button.dataset.authMode === mode);
   });
@@ -196,7 +201,6 @@ function unlockProfile(hash) {
   state.profileHash = hash;
   storageKey = `${storagePrefix}${hash}`;
   state.expenses = loadExpenses();
-  migrateLegacyExpensesIfNeeded();
   state.activeMonth = monthKey(new Date());
   state.selectedCategoryId = "";
   state.pendingImports = [];
@@ -230,21 +234,6 @@ function getProfiles() {
     return JSON.parse(localStorage.getItem(profileRegistryKey) || "[]");
   } catch {
     return [];
-  }
-}
-
-function migrateLegacyExpensesIfNeeded() {
-  if (state.expenses.length || localStorage.getItem(storageKey)) return;
-  const legacy = localStorage.getItem(legacyStorageKey);
-  if (!legacy) return;
-  try {
-    const parsed = JSON.parse(legacy);
-    if (Array.isArray(parsed) && parsed.length) {
-      state.expenses = parsed;
-      saveExpenses();
-    }
-  } catch {
-    // Ignore malformed legacy data.
   }
 }
 
@@ -1301,6 +1290,66 @@ function deleteExpense(id) {
   state.expenses = state.expenses.filter((expense) => expense.id !== id);
   saveExpenses();
   render();
+}
+
+function exportLedgerFile() {
+  if (!state.profileHash) return;
+  const payload = {
+    app: "MoneyTracking",
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    expenses: state.expenses
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `moneytracking-${state.activeMonth}-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function importLedgerFile(event) {
+  const file = event.target.files[0];
+  event.target.value = "";
+  if (!file || !state.profileHash) return;
+
+  try {
+    const text = await file.text();
+    const parsed = JSON.parse(text);
+    const expenses = Array.isArray(parsed) ? parsed : parsed.expenses;
+    if (!Array.isArray(expenses)) throw new Error("Invalid ledger file");
+    const normalized = expenses
+      .map(normalizeImportedExpense)
+      .filter(Boolean);
+    if (!normalized.length) throw new Error("No valid expenses");
+    const replace = confirm("导入后是否替换当前账本？选择“取消”则合并导入。");
+    state.expenses = replace ? normalized : [...normalized, ...state.expenses];
+    saveExpenses();
+    state.activeMonth = monthKey(normalized[0].date);
+    state.selectedCategoryId = "";
+    render();
+  } catch (error) {
+    alert("导入失败：请选择从本 App 导出的 JSON 账本文件。");
+    console.warn(error);
+  }
+}
+
+function normalizeImportedExpense(expense) {
+  const amount = Number(expense.amount);
+  if (!Number.isFinite(amount) || amount <= 0 || !expense.date) return null;
+  return {
+    id: expense.id || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())),
+    amount,
+    date: String(expense.date).slice(0, 10),
+    category: categories.some((cat) => cat.id === expense.category) ? expense.category : "other",
+    merchant: String(expense.merchant || "导入支出").slice(0, 80),
+    note: String(expense.note || "").slice(0, 500),
+    source: expense.source || "import",
+    createdAt: expense.createdAt || new Date().toISOString()
+  };
 }
 
 function seedDemoData() {

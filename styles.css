@@ -369,6 +369,22 @@ textarea:focus {
   color: #9f2b22;
 }
 
+.import-ledger-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 15px;
+  font-weight: 850;
+}
+
+.import-ledger-button input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .receipt-tools {
   display: grid;
   gap: 12px;
