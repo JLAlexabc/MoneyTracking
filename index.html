@@ -7,7 +7,7 @@
     <meta name="description" content="生活开销记录、票据识别、分类统计与数据分析">
     <title>拾账 - 生活开销分析</title>
     <link rel="manifest" href="manifest.webmanifest">
-    <link rel="stylesheet" href="styles.css?v=27">
+    <link rel="stylesheet" href="styles.css?v=28">
   </head>
   <body>
     <section class="auth-screen" id="authScreen">
@@ -41,6 +41,19 @@
             <button class="icon-button" type="button" id="prevMonth" aria-label="上个月">‹</button>
             <button class="month-button" type="button" id="currentMonth"></button>
             <button class="icon-button" type="button" id="nextMonth" aria-label="下个月">›</button>
+          </div>
+          <div class="popover month-popover" id="monthPicker" hidden>
+            <div class="field-row">
+              <label>
+                <span>年份</span>
+                <input id="monthPickerYear" type="number" min="2000" max="2100" step="1">
+              </label>
+              <label>
+                <span>月份</span>
+                <select id="monthPickerMonth"></select>
+              </label>
+            </div>
+            <button type="button" class="primary-button" id="applyMonthPicker">跳转月份</button>
           </div>
           <button class="secondary-button" type="button" id="lockApp">切换用户</button>
           <button class="primary-button add-toggle" type="button" id="openEntry">添加开销</button>
@@ -234,11 +247,43 @@
         </div>
         <div class="record-side">
           <strong></strong>
+          <button type="button" aria-label="编辑记录">编辑</button>
           <button type="button" aria-label="删除记录">×</button>
         </div>
       </article>
     </template>
 
-    <script src="app.js?v=27"></script>
+    <div class="modal-backdrop" id="editModal" hidden>
+      <form class="modal-card" id="editForm">
+        <div class="panel-heading compact">
+          <div>
+            <h2>编辑记录</h2>
+            <p>修改这笔消费的名称、金额和类别。</p>
+          </div>
+          <button type="button" class="icon-button close-entry" id="cancelEdit" aria-label="关闭编辑">×</button>
+        </div>
+        <input type="hidden" id="editId">
+        <label>
+          <span>名称</span>
+          <input id="editMerchant" type="text" required>
+        </label>
+        <div class="field-row">
+          <label>
+            <span>金额</span>
+            <input id="editAmount" type="number" min="0" step="0.01" inputmode="decimal" required>
+          </label>
+          <label>
+            <span>类别</span>
+            <select id="editCategory" required></select>
+          </label>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="secondary-button" id="cancelEditSecondary">取消</button>
+          <button type="submit" class="primary-button">保存修改</button>
+        </div>
+      </form>
+    </div>
+
+    <script src="app.js?v=28"></script>
   </body>
 </html>

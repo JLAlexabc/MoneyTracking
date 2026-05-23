@@ -37,6 +37,18 @@ const els = {
   currentMonth: document.querySelector("#currentMonth"),
   prevMonth: document.querySelector("#prevMonth"),
   nextMonth: document.querySelector("#nextMonth"),
+  monthPicker: document.querySelector("#monthPicker"),
+  monthPickerYear: document.querySelector("#monthPickerYear"),
+  monthPickerMonth: document.querySelector("#monthPickerMonth"),
+  applyMonthPicker: document.querySelector("#applyMonthPicker"),
+  editModal: document.querySelector("#editModal"),
+  editForm: document.querySelector("#editForm"),
+  editId: document.querySelector("#editId"),
+  editMerchant: document.querySelector("#editMerchant"),
+  editAmount: document.querySelector("#editAmount"),
+  editCategory: document.querySelector("#editCategory"),
+  cancelEdit: document.querySelector("#cancelEdit"),
+  cancelEditSecondary: document.querySelector("#cancelEditSecondary"),
   totalSpent: document.querySelector("#totalSpent"),
   dailyAverage: document.querySelector("#dailyAverage"),
   monthHint: document.querySelector("#monthHint"),
@@ -107,7 +119,18 @@ function init() {
     option.value = cat.id;
     option.textContent = cat.label;
     els.category.append(option);
+
+    const editOption = document.createElement("option");
+    editOption.value = cat.id;
+    editOption.textContent = cat.label;
+    els.editCategory.append(editOption);
   });
+  for (let month = 1; month <= 12; month += 1) {
+    const option = document.createElement("option");
+    option.value = String(month);
+    option.textContent = `${month}月`;
+    els.monthPickerMonth.append(option);
+  }
 
   document.querySelectorAll("[data-entry-mode]").forEach((button) => {
     button.addEventListener("click", () => switchMode(button.dataset.entryMode));
@@ -119,10 +142,11 @@ function init() {
   els.lockApp.addEventListener("click", lockApp);
   els.prevMonth.addEventListener("click", () => shiftMonth(-1));
   els.nextMonth.addEventListener("click", () => shiftMonth(1));
-  els.currentMonth.addEventListener("click", () => {
-    state.activeMonth = monthKey(new Date());
-    render();
-  });
+  els.currentMonth.addEventListener("click", toggleMonthPicker);
+  els.applyMonthPicker.addEventListener("click", applyMonthPicker);
+  els.editForm.addEventListener("submit", saveEditedExpense);
+  els.cancelEdit.addEventListener("click", closeEditModal);
+  els.cancelEditSecondary.addEventListener("click", closeEditModal);
   els.openEntry.addEventListener("click", () => setEntryDrawer(true));
   els.closeEntry.addEventListener("click", () => setEntryDrawer(false));
   els.closeCategoryDetail.addEventListener("click", () => {
@@ -243,6 +267,23 @@ function setEntryDrawer(open) {
   if (open) {
     window.setTimeout(() => els.amount.focus(), 0);
   }
+}
+
+function toggleMonthPicker() {
+  const [year, month] = state.activeMonth.split("-").map(Number);
+  els.monthPickerYear.value = String(year);
+  els.monthPickerMonth.value = String(month);
+  els.monthPicker.hidden = !els.monthPicker.hidden;
+}
+
+function applyMonthPicker() {
+  const year = Number(els.monthPickerYear.value);
+  const month = Number(els.monthPickerMonth.value);
+  if (!Number.isInteger(year) || !Number.isInteger(month)) return;
+  state.activeMonth = `${year}-${String(month).padStart(2, "0")}`;
+  state.selectedCategoryId = "";
+  els.monthPicker.hidden = true;
+  render();
 }
 
 function loadExpenses() {
@@ -1273,17 +1314,54 @@ function renderRecords(expenses) {
     const title = node.querySelector(".record-main strong");
     const meta = node.querySelector(".record-main span");
     const amount = node.querySelector(".record-side strong");
-    const button = node.querySelector(".record-side button");
+    const buttons = node.querySelectorAll(".record-side button");
+    const editButton = buttons[0];
+    const deleteButton = buttons[1];
 
     icon.textContent = cat.icon;
     icon.style.background = cat.color;
     title.textContent = expense.merchant;
     meta.textContent = `${dateFmt.format(new Date(`${expense.date}T00:00:00`))} · ${cat.label}${expense.note ? ` · ${expense.note}` : ""}`;
     amount.textContent = currency.format(expense.amount);
-    button.addEventListener("click", () => deleteExpense(expense.id));
+    editButton.addEventListener("click", () => openEditModal(expense.id));
+    deleteButton.addEventListener("click", () => deleteExpense(expense.id));
     item.dataset.id = expense.id;
     els.recordsList.append(node);
   });
+}
+
+function openEditModal(id) {
+  const expense = state.expenses.find((item) => item.id === id);
+  if (!expense) return;
+  els.editId.value = expense.id;
+  els.editMerchant.value = expense.merchant;
+  els.editAmount.value = Number(expense.amount).toFixed(2);
+  els.editCategory.value = expense.category;
+  els.editModal.hidden = false;
+  window.setTimeout(() => els.editMerchant.focus(), 0);
+}
+
+function closeEditModal() {
+  els.editModal.hidden = true;
+  els.editForm.reset();
+}
+
+function saveEditedExpense(event) {
+  event.preventDefault();
+  const amount = Number(els.editAmount.value);
+  if (!Number.isFinite(amount) || amount <= 0) return;
+  const index = state.expenses.findIndex((expense) => expense.id === els.editId.value);
+  if (index === -1) return;
+
+  state.expenses[index] = {
+    ...state.expenses[index],
+    merchant: els.editMerchant.value.trim() || "未命名支出",
+    amount,
+    category: els.editCategory.value
+  };
+  saveExpenses();
+  closeEditModal();
+  render();
 }
 
 function deleteExpense(id) {

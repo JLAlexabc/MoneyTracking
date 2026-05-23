@@ -135,8 +135,22 @@ h2 {
 }
 
 .top-actions {
+  position: relative;
   justify-content: flex-end;
   flex-wrap: wrap;
+}
+
+.popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 5;
+  width: min(360px, calc(100vw - 32px));
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  box-shadow: var(--shadow);
 }
 
 .icon-button,
@@ -774,13 +788,47 @@ textarea:focus {
 }
 
 .record-side button {
-  width: 34px;
+  min-width: 34px;
   height: 34px;
+  padding: 0 9px;
   border: 1px solid #efd2cc;
   border-radius: 8px;
   background: #fff5f2;
   color: #a3332a;
-  font-size: 1.2rem;
+  font-size: 0.9rem;
+  font-weight: 850;
+}
+
+.record-side button:first-of-type {
+  border-color: var(--line);
+  background: white;
+  color: var(--brand-dark);
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(31, 41, 38, 0.42);
+}
+
+.modal-card {
+  display: grid;
+  gap: 14px;
+  width: min(520px, 100%);
+  padding: 18px;
+  border-radius: 8px;
+  background: white;
+  box-shadow: var(--shadow);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 .empty-state {
@@ -868,6 +916,10 @@ textarea:focus {
     align-items: flex-end;
     flex-direction: column;
     flex: 0 0 auto;
+  }
+
+  .modal-actions {
+    flex-direction: column-reverse;
   }
 
   .record-side strong {
