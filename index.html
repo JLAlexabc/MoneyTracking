@@ -7,7 +7,7 @@
     <meta name="description" content="生活开销记录、票据识别、分类统计与数据分析">
     <title>拾账 - 生活开销分析</title>
     <link rel="manifest" href="manifest.webmanifest">
-    <link rel="stylesheet" href="styles.css?v=28">
+    <link rel="stylesheet" href="styles.css?v=29">
   </head>
   <body>
     <section class="auth-screen" id="authScreen">
@@ -56,11 +56,66 @@
             <button type="button" class="primary-button" id="applyMonthPicker">跳转月份</button>
           </div>
           <button class="secondary-button" type="button" id="lockApp">切换用户</button>
+          <button class="secondary-button" type="button" id="openDashboard">开销分析</button>
           <button class="primary-button add-toggle" type="button" id="openEntry">添加开销</button>
         </div>
       </header>
 
       <main>
+        <section class="calendar-view" id="calendarView" aria-label="月度日历">
+          <section class="panel calendar-panel">
+            <div class="panel-heading records-heading">
+              <div>
+                <h2 id="calendarTitle">月度日历</h2>
+                <p id="calendarSummary">点击日期添加重要事情纪要。</p>
+              </div>
+              <div class="record-actions">
+                <button type="button" class="secondary-button" id="exportEvents">导出纪要</button>
+              </div>
+            </div>
+            <div class="calendar-weekdays" aria-hidden="true">
+              <span>日</span>
+              <span>一</span>
+              <span>二</span>
+              <span>三</span>
+              <span>四</span>
+              <span>五</span>
+              <span>六</span>
+            </div>
+            <div class="calendar-grid" id="calendarGrid"></div>
+          </section>
+
+          <section class="calendar-summary-grid">
+            <div class="panel event-summary-panel">
+              <div class="panel-heading compact">
+                <div>
+                  <h2>本月重要纪要</h2>
+                  <p id="monthlyEventsSummary">暂无纪要</p>
+                </div>
+              </div>
+              <div class="event-list" id="monthlyEvents"></div>
+            </div>
+            <div class="panel event-summary-panel">
+              <div class="panel-heading compact">
+                <div>
+                  <h2>年度纪要</h2>
+                  <p id="yearlyEventsSummary">暂无纪要</p>
+                </div>
+              </div>
+              <div class="event-list yearly" id="yearlyEvents"></div>
+            </div>
+          </section>
+        </section>
+
+        <section class="dashboard-view" id="dashboardView" hidden>
+          <div class="view-heading">
+            <div>
+              <h2>开销分析</h2>
+              <p>查看当前月份的分类、年度趋势和交易明细。</p>
+            </div>
+            <button type="button" class="secondary-button" id="backToCalendar">返回日历</button>
+          </div>
+
         <section class="dashboard-grid" aria-label="月度开销概览">
           <article class="hero-metric">
             <div class="hero-copy">
@@ -235,6 +290,7 @@
           </div>
           <div class="records-list" id="recordsList"></div>
         </section>
+        </section>
       </main>
     </div>
 
@@ -284,6 +340,36 @@
       </form>
     </div>
 
-    <script src="app.js?v=28"></script>
+    <div class="modal-backdrop" id="eventModal" hidden>
+      <form class="modal-card" id="eventForm">
+        <div class="panel-heading compact">
+          <div>
+            <h2 id="eventModalTitle">添加重要纪要</h2>
+            <p>记录当天值得留意的事情，之后可按月或按年查看。</p>
+          </div>
+          <button type="button" class="icon-button close-entry" id="cancelEvent" aria-label="关闭纪要">×</button>
+        </div>
+        <input type="hidden" id="eventId">
+        <label>
+          <span>日期</span>
+          <input id="eventDate" type="date" required>
+        </label>
+        <label>
+          <span>标题</span>
+          <input id="eventTitle" type="text" maxlength="80" placeholder="例如：签约、旅行、体检" required>
+        </label>
+        <label>
+          <span>内容</span>
+          <textarea id="eventNote" maxlength="1000" placeholder="补充地点、原因、结果或后续待办"></textarea>
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="secondary-button danger" id="deleteEvent" hidden>删除</button>
+          <button type="button" class="secondary-button" id="cancelEventSecondary">取消</button>
+          <button type="submit" class="primary-button">保存纪要</button>
+        </div>
+      </form>
+    </div>
+
+    <script src="app.js?v=29"></script>
   </body>
 </html>

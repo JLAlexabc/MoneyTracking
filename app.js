@@ -12,14 +12,18 @@ const categories = [
 const legacyStorageKey = "moneytracking.expenses.v1";
 const profileRegistryKey = "moneytracking.profiles.v1";
 const storagePrefix = "moneytracking.expenses.profile.";
+const eventStoragePrefix = "moneytracking.events.profile.";
 let storageKey = "";
+let eventStorageKey = "";
 const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 const dateFmt = new Intl.DateTimeFormat("zh-CN", { month: "short", day: "numeric" });
 
 const state = {
   expenses: [],
+  events: [],
   activeMonth: monthKey(new Date()),
   mode: "manual",
+  view: "calendar",
   pendingImports: [],
   selectedCategoryId: "",
   authMode: "login",
@@ -41,6 +45,18 @@ const els = {
   monthPickerYear: document.querySelector("#monthPickerYear"),
   monthPickerMonth: document.querySelector("#monthPickerMonth"),
   applyMonthPicker: document.querySelector("#applyMonthPicker"),
+  calendarView: document.querySelector("#calendarView"),
+  dashboardView: document.querySelector("#dashboardView"),
+  openDashboard: document.querySelector("#openDashboard"),
+  backToCalendar: document.querySelector("#backToCalendar"),
+  calendarTitle: document.querySelector("#calendarTitle"),
+  calendarSummary: document.querySelector("#calendarSummary"),
+  calendarGrid: document.querySelector("#calendarGrid"),
+  monthlyEvents: document.querySelector("#monthlyEvents"),
+  monthlyEventsSummary: document.querySelector("#monthlyEventsSummary"),
+  yearlyEvents: document.querySelector("#yearlyEvents"),
+  yearlyEventsSummary: document.querySelector("#yearlyEventsSummary"),
+  exportEvents: document.querySelector("#exportEvents"),
   editModal: document.querySelector("#editModal"),
   editForm: document.querySelector("#editForm"),
   editId: document.querySelector("#editId"),
@@ -49,6 +65,16 @@ const els = {
   editCategory: document.querySelector("#editCategory"),
   cancelEdit: document.querySelector("#cancelEdit"),
   cancelEditSecondary: document.querySelector("#cancelEditSecondary"),
+  eventModal: document.querySelector("#eventModal"),
+  eventForm: document.querySelector("#eventForm"),
+  eventModalTitle: document.querySelector("#eventModalTitle"),
+  eventId: document.querySelector("#eventId"),
+  eventDate: document.querySelector("#eventDate"),
+  eventTitle: document.querySelector("#eventTitle"),
+  eventNote: document.querySelector("#eventNote"),
+  cancelEvent: document.querySelector("#cancelEvent"),
+  cancelEventSecondary: document.querySelector("#cancelEventSecondary"),
+  deleteEvent: document.querySelector("#deleteEvent"),
   totalSpent: document.querySelector("#totalSpent"),
   dailyAverage: document.querySelector("#dailyAverage"),
   monthHint: document.querySelector("#monthHint"),
@@ -113,7 +139,7 @@ const chartState = {
 };
 
 function init() {
-  els.date.value = new Date().toISOString().slice(0, 10);
+  els.date.value = dateKeyFromDate(new Date());
   categories.forEach((cat) => {
     const option = document.createElement("option");
     option.value = cat.id;
@@ -144,10 +170,24 @@ function init() {
   els.nextMonth.addEventListener("click", () => shiftMonth(1));
   els.currentMonth.addEventListener("click", toggleMonthPicker);
   els.applyMonthPicker.addEventListener("click", applyMonthPicker);
+  els.openDashboard.addEventListener("click", () => switchView("dashboard"));
+  els.backToCalendar.addEventListener("click", () => switchView("calendar"));
+  els.exportEvents.addEventListener("click", exportEventsFile);
   els.editForm.addEventListener("submit", saveEditedExpense);
   els.cancelEdit.addEventListener("click", closeEditModal);
   els.cancelEditSecondary.addEventListener("click", closeEditModal);
-  els.openEntry.addEventListener("click", () => setEntryDrawer(true));
+  els.eventForm.addEventListener("submit", saveEvent);
+  els.cancelEvent.addEventListener("click", closeEventModal);
+  els.cancelEventSecondary.addEventListener("click", closeEventModal);
+  els.deleteEvent.addEventListener("click", deleteCurrentEvent);
+  els.calendarGrid.addEventListener("click", handleCalendarClick);
+  els.monthlyEvents.addEventListener("click", handleEventListClick);
+  els.yearlyEvents.addEventListener("click", handleEventListClick);
+  els.openEntry.addEventListener("click", () => {
+    if (state.view !== "dashboard") state.view = "dashboard";
+    setEntryDrawer(true);
+    render();
+  });
   els.closeEntry.addEventListener("click", () => setEntryDrawer(false));
   els.closeCategoryDetail.addEventListener("click", () => {
     state.selectedCategoryId = "";
@@ -224,8 +264,11 @@ async function handleAuthSubmit(event) {
 function unlockProfile(hash) {
   state.profileHash = hash;
   storageKey = `${storagePrefix}${hash}`;
+  eventStorageKey = `${eventStoragePrefix}${hash}`;
   state.expenses = loadExpenses();
+  state.events = loadEvents();
   state.activeMonth = monthKey(new Date());
+  state.view = "calendar";
   state.selectedCategoryId = "";
   state.pendingImports = [];
   els.authPassword.value = "";
@@ -237,7 +280,10 @@ function unlockProfile(hash) {
 function lockApp() {
   state.profileHash = "";
   storageKey = "";
+  eventStorageKey = "";
   state.expenses = [];
+  state.events = [];
+  state.view = "calendar";
   state.selectedCategoryId = "";
   state.pendingImports = [];
   setEntryDrawer(false);
@@ -298,9 +344,50 @@ function saveExpenses() {
   localStorage.setItem(storageKey, JSON.stringify(state.expenses));
 }
 
+function loadEvents() {
+  try {
+    return JSON.parse(localStorage.getItem(eventStorageKey) || "[]").map(normalizeImportedEvent).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+function saveEvents() {
+  localStorage.setItem(eventStorageKey, JSON.stringify(state.events));
+}
+
 function monthKey(date) {
+  if (typeof date === "string") {
+    const parts = parseDateParts(date);
+    if (parts) return `${parts.year}-${String(parts.month).padStart(2, "0")}`;
+  }
   const d = date instanceof Date ? date : new Date(date);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function parseDateParts(value) {
+  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+  return { year, month, day };
+}
+
+function isValidDateString(value) {
+  return Boolean(parseDateParts(value));
+}
+
+function formatDateLabel(value) {
+  const parts = parseDateParts(value);
+  if (!parts) return String(value || "");
+  return dateFmt.format(new Date(parts.year, parts.month - 1, parts.day));
+}
+
+function dateKeyFromDate(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 function shiftMonth(delta) {
@@ -308,6 +395,16 @@ function shiftMonth(delta) {
   const next = new Date(year, month - 1 + delta, 1);
   state.activeMonth = monthKey(next);
   render();
+}
+
+function switchView(view) {
+  state.view = view;
+  if (view === "calendar") {
+    setEntryDrawer(false);
+    state.selectedCategoryId = "";
+  }
+  render();
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function switchMode(mode) {
@@ -321,7 +418,7 @@ function switchMode(mode) {
 function addExpense(event) {
   event.preventDefault();
   const amount = Number(els.amount.value);
-  if (!Number.isFinite(amount) || amount <= 0) return;
+  if (!Number.isFinite(amount) || amount <= 0 || !isValidDateString(els.date.value)) return;
 
   state.expenses.unshift({
     id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
@@ -336,7 +433,7 @@ function addExpense(event) {
   state.activeMonth = monthKey(els.date.value);
   saveExpenses();
   els.expenseForm.reset();
-  els.date.value = new Date().toISOString().slice(0, 10);
+  els.date.value = dateKeyFromDate(new Date());
   els.category.value = "food";
   els.receiptPreview.hidden = true;
   els.ocrStatus.textContent = "支持 JPG、PNG、HEIC，并可拆分信用卡流水";
@@ -761,7 +858,7 @@ function clearPendingImports() {
 }
 
 function formatInputDate(value) {
-  return dateFmt.format(new Date(`${value}T00:00:00`));
+  return formatDateLabel(value);
 }
 
 function escapeHtml(value) {
@@ -815,12 +912,188 @@ function getMonthExpenses() {
     .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
 }
 
+function getMonthEvents() {
+  return state.events
+    .filter((item) => monthKey(item.date) === state.activeMonth)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt));
+}
+
+function getYearEvents() {
+  const year = state.activeMonth.slice(0, 4);
+  return state.events
+    .filter((item) => item.date.startsWith(`${year}-`))
+    .sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt));
+}
+
+function renderCalendar(expenses) {
+  const [year, month] = state.activeMonth.split("-").map(Number);
+  const first = new Date(year, month - 1, 1);
+  const start = new Date(year, month - 1, 1 - first.getDay());
+  const monthEvents = getMonthEvents();
+  const yearEvents = getYearEvents();
+  const expenseByDate = new Map();
+  const eventsByDate = new Map();
+
+  expenses.forEach((expense) => {
+    expenseByDate.set(expense.date, (expenseByDate.get(expense.date) || 0) + expense.amount);
+  });
+  monthEvents.forEach((item) => {
+    if (!eventsByDate.has(item.date)) eventsByDate.set(item.date, []);
+    eventsByDate.get(item.date).push(item);
+  });
+
+  els.calendarTitle.textContent = `${formatMonth(state.activeMonth)}日历`;
+  els.calendarSummary.textContent = `本月 ${expenses.length} 笔开销，${monthEvents.length} 条重要纪要。点击日期即可添加纪要。`;
+  els.calendarGrid.innerHTML = "";
+
+  for (let index = 0; index < 42; index += 1) {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    const key = dateKeyFromDate(date);
+    const inMonth = date.getMonth() === month - 1;
+    const dayEvents = eventsByDate.get(key) || [];
+    const total = expenseByDate.get(key) || 0;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "calendar-day";
+    button.classList.toggle("muted", !inMonth);
+    button.classList.toggle("has-event", dayEvents.length > 0);
+    button.classList.toggle("today", key === dateKeyFromDate(new Date()));
+    button.dataset.date = key;
+    button.innerHTML = `
+      <span class="day-number">${date.getDate()}</span>
+      ${total ? `<strong>${currency.format(total)}</strong>` : ""}
+      ${dayEvents.length ? `<small>${escapeHtml(dayEvents[0].title)}${dayEvents.length > 1 ? ` +${dayEvents.length - 1}` : ""}</small>` : ""}
+    `;
+    els.calendarGrid.append(button);
+  }
+
+  renderEventSummaries(monthEvents, yearEvents);
+}
+
+function renderEventSummaries(monthEvents, yearEvents) {
+  els.monthlyEventsSummary.textContent = monthEvents.length ? `${formatMonth(state.activeMonth)} 共 ${monthEvents.length} 条` : "暂无纪要";
+  els.yearlyEventsSummary.textContent = yearEvents.length ? `${state.activeMonth.slice(0, 4)} 年共 ${yearEvents.length} 条` : "暂无纪要";
+  els.monthlyEvents.innerHTML = renderEventList(monthEvents, "本月还没有重要纪要。");
+
+  const grouped = Array.from({ length: 12 }, (_, index) => {
+    const month = String(index + 1).padStart(2, "0");
+    const items = yearEvents.filter((item) => item.date.slice(5, 7) === month);
+    return { month: index + 1, items };
+  }).filter((group) => group.items.length);
+
+  els.yearlyEvents.innerHTML = grouped.length ? grouped.map((group) => `
+    <div class="event-month-group">
+      <button type="button" class="event-month-chip" data-month="${group.month}">${group.month}月 · ${group.items.length}条</button>
+      ${renderEventList(group.items)}
+    </div>
+  `).join("") : `<div class="empty-state">这一年还没有重要纪要。</div>`;
+}
+
+function renderEventList(events, emptyText = "") {
+  if (!events.length) return emptyText ? `<div class="empty-state">${emptyText}</div>` : "";
+  return events.map((item) => `
+    <article class="event-item">
+      <time>${formatDateLabel(item.date)}</time>
+      <div>
+        <strong>${escapeHtml(item.title)}</strong>
+        ${item.note ? `<span>${escapeHtml(item.note)}</span>` : ""}
+      </div>
+      <button type="button" class="secondary-button" data-event-edit="${escapeHtml(item.id)}">编辑</button>
+    </article>
+  `).join("");
+}
+
+function handleCalendarClick(event) {
+  const day = event.target.closest(".calendar-day");
+  if (!day) return;
+  openEventModal(day.dataset.date);
+}
+
+function handleEventListClick(event) {
+  const editButton = event.target.closest("[data-event-edit]");
+  if (editButton) {
+    openEventModal("", editButton.dataset.eventEdit);
+    return;
+  }
+  const monthButton = event.target.closest("[data-month]");
+  if (monthButton) {
+    const year = state.activeMonth.slice(0, 4);
+    state.activeMonth = `${year}-${String(monthButton.dataset.month).padStart(2, "0")}`;
+    render();
+  }
+}
+
+function openEventModal(date, id = "") {
+  const existing = id ? state.events.find((item) => item.id === id) : null;
+  els.eventModalTitle.textContent = existing ? "编辑重要纪要" : "添加重要纪要";
+  els.eventId.value = existing ? existing.id : "";
+  els.eventDate.value = existing ? existing.date : date;
+  els.eventTitle.value = existing ? existing.title : "";
+  els.eventNote.value = existing ? existing.note : "";
+  els.deleteEvent.hidden = !existing;
+  els.eventModal.hidden = false;
+  window.setTimeout(() => els.eventTitle.focus(), 0);
+}
+
+function closeEventModal() {
+  els.eventModal.hidden = true;
+  els.eventForm.reset();
+  els.eventId.value = "";
+  els.deleteEvent.hidden = true;
+}
+
+function saveEvent(event) {
+  event.preventDefault();
+  if (!isValidDateString(els.eventDate.value)) return;
+  const title = els.eventTitle.value.trim();
+  if (!title) return;
+  const now = new Date().toISOString();
+  const id = els.eventId.value;
+  const item = {
+    id: id || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())),
+    date: els.eventDate.value,
+    title,
+    note: els.eventNote.value.trim(),
+    createdAt: now,
+    updatedAt: now
+  };
+
+  if (id) {
+    const index = state.events.findIndex((eventItem) => eventItem.id === id);
+    if (index !== -1) {
+      item.createdAt = state.events[index].createdAt || now;
+      state.events[index] = item;
+    }
+  } else {
+    state.events.push(item);
+  }
+
+  state.activeMonth = monthKey(item.date);
+  saveEvents();
+  closeEventModal();
+  render();
+}
+
+function deleteCurrentEvent() {
+  const id = els.eventId.value;
+  if (!id) return;
+  if (!confirm("确定删除这条重要纪要吗？")) return;
+  state.events = state.events.filter((item) => item.id !== id);
+  saveEvents();
+  closeEventModal();
+  render();
+}
+
 function render() {
   const expenses = getMonthExpenses();
   const total = sum(expenses.map((expense) => expense.amount));
   const byCategory = groupByCategory(expenses);
   const top = [...byCategory].sort((a, b) => b.total - a.total)[0];
 
+  els.calendarView.hidden = state.view !== "calendar";
+  els.dashboardView.hidden = state.view !== "dashboard";
+  els.openDashboard.textContent = state.view === "dashboard" ? "正在分析" : "开销分析";
   els.currentMonth.textContent = formatMonth(state.activeMonth);
   els.totalSpent.textContent = currency.format(total);
   els.entryCount.textContent = String(expenses.length);
@@ -832,6 +1105,7 @@ function render() {
   els.categorySummary.textContent = top ? `${top.category.label} 占比最高，支出 ${currency.format(top.total)}；小项已增强显示` : "暂无数据";
   els.recordSummary.textContent = expenses.length ? `${formatMonth(state.activeMonth)} 共 ${expenses.length} 笔` : "所有记录保存在本机浏览器。";
 
+  renderCalendar(expenses);
   renderDonut(byCategory, total);
   renderYearSummary();
   renderCategoryDetail(expenses);
@@ -1095,7 +1369,7 @@ function renderCategoryDetailChart(records, cat) {
     ctx.fillStyle = "#6b746f";
     ctx.font = "11px system-ui";
     ctx.textAlign = "center";
-    ctx.fillText(dateFmt.format(new Date(`${record.date}T00:00:00`)), x + barW / 2, 196);
+    ctx.fillText(formatDateLabel(record.date), x + barW / 2, 196);
   });
 
   ctx.fillStyle = "#1f2926";
@@ -1121,7 +1395,7 @@ function handleCategoryDetailHover(event) {
   els.categoryDetailTooltip.hidden = false;
   els.categoryDetailTooltip.innerHTML = `
     <strong>${escapeHtml(bar.record.merchant)}</strong>
-    <span>${dateFmt.format(new Date(`${bar.record.date}T00:00:00`))} · ${currency.format(bar.record.amount)}</span>
+    <span>${formatDateLabel(bar.record.date)} · ${currency.format(bar.record.amount)}</span>
   `;
   els.categoryDetailTooltip.style.left = `${Math.min(Math.max(x + 12, 90), rect.width - 90)}px`;
   els.categoryDetailTooltip.style.top = `${Math.min(Math.max(y + 12, 12), 178)}px`;
@@ -1168,7 +1442,7 @@ function renderCategoryDetailRecords(records, cat) {
       <div class="record-icon" style="background:${cat.color}">${cat.icon}</div>
       <div class="record-main">
         <strong>${escapeHtml(record.merchant)}</strong>
-        <span>${dateFmt.format(new Date(`${record.date}T00:00:00`))}${record.note ? ` · ${escapeHtml(record.note)}` : ""}</span>
+        <span>${formatDateLabel(record.date)}${record.note ? ` · ${escapeHtml(record.note)}` : ""}</span>
       </div>
       <div class="record-side"><strong>${currency.format(record.amount)}</strong></div>
     </article>
@@ -1287,7 +1561,7 @@ function renderInsights(expenses, groups, total) {
   const insights = [
     { title: "预算节奏", body: `当前日均 ${currency.format(avg)}。按这个节奏，本月预计约 ${currency.format(avg * new Date(Number(state.activeMonth.slice(0, 4)), Number(state.activeMonth.slice(5)), 0).getDate())}。` },
     { title: "类别集中度", body: top ? `${top.category.label} 是最大开销，已占 ${Math.round((top.total / total) * 100)}%。` : "类别分布还不明显。" },
-    { title: "最大单笔", body: `${largest.merchant} 花费 ${currency.format(largest.amount)}，日期 ${dateFmt.format(new Date(`${largest.date}T00:00:00`))}。` },
+    { title: "最大单笔", body: `${largest.merchant} 花费 ${currency.format(largest.amount)}，日期 ${formatDateLabel(largest.date)}。` },
     { title: "录入方式", body: imageImportCount ? `${imageImportCount} 笔来自图片识别，占 ${Math.round((imageImportCount / expenses.length) * 100)}%。` : "目前全部为手动录入。" }
   ];
 
@@ -1321,7 +1595,7 @@ function renderRecords(expenses) {
     icon.textContent = cat.icon;
     icon.style.background = cat.color;
     title.textContent = expense.merchant;
-    meta.textContent = `${dateFmt.format(new Date(`${expense.date}T00:00:00`))} · ${cat.label}${expense.note ? ` · ${expense.note}` : ""}`;
+    meta.textContent = `${formatDateLabel(expense.date)} · ${cat.label}${expense.note ? ` · ${expense.note}` : ""}`;
     amount.textContent = currency.format(expense.amount);
     editButton.addEventListener("click", () => openEditModal(expense.id));
     deleteButton.addEventListener("click", () => deleteExpense(expense.id));
@@ -1374,15 +1648,37 @@ function exportLedgerFile() {
   if (!state.profileHash) return;
   const payload = {
     app: "MoneyTracking",
-    version: 1,
+    version: 2,
     exportedAt: new Date().toISOString(),
-    expenses: state.expenses
+    expenses: state.expenses,
+    events: state.events
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
   link.download = `moneytracking-${state.activeMonth}-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function exportEventsFile() {
+  if (!state.profileHash) return;
+  const payload = {
+    app: "MoneyTracking",
+    type: "important-events",
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    activeMonth: state.activeMonth,
+    events: state.events
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `moneytracking-events-${state.activeMonth}-${new Date().toISOString().slice(0, 10)}.json`;
   document.body.append(link);
   link.click();
   link.remove();
@@ -1397,16 +1693,22 @@ async function importLedgerFile(event) {
   try {
     const text = await file.text();
     const parsed = JSON.parse(text);
-    const expenses = Array.isArray(parsed) ? parsed : parsed.expenses;
-    if (!Array.isArray(expenses)) throw new Error("Invalid ledger file");
+    const expenses = Array.isArray(parsed) ? parsed : (Array.isArray(parsed.expenses) ? parsed.expenses : []);
+    const events = Array.isArray(parsed.events) ? parsed.events : [];
     const normalized = expenses
-      .map(normalizeImportedExpense)
+      .map((expense) => normalizeImportedExpense(expense, true))
       .filter(Boolean);
-    if (!normalized.length) throw new Error("No valid expenses");
+    const normalizedEvents = events
+      .map((item) => normalizeImportedEvent(item, true))
+      .filter(Boolean);
+    if (!normalized.length && !normalizedEvents.length) throw new Error("No valid data");
     const replace = confirm("导入后是否替换当前账本？选择“取消”则合并导入。");
     state.expenses = replace ? normalized : [...normalized, ...state.expenses];
+    state.events = replace ? normalizedEvents : [...normalizedEvents, ...state.events];
     saveExpenses();
-    state.activeMonth = monthKey(normalized[0].date);
+    saveEvents();
+    const firstDate = normalized[0]?.date || normalizedEvents[0]?.date;
+    if (firstDate) state.activeMonth = monthKey(firstDate);
     state.selectedCategoryId = "";
     render();
   } catch (error) {
@@ -1415,11 +1717,11 @@ async function importLedgerFile(event) {
   }
 }
 
-function normalizeImportedExpense(expense) {
+function normalizeImportedExpense(expense, refreshId = false) {
   const amount = Number(expense.amount);
-  if (!Number.isFinite(amount) || amount <= 0 || !expense.date) return null;
+  if (!Number.isFinite(amount) || amount <= 0 || !isValidDateString(expense.date)) return null;
   return {
-    id: expense.id || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())),
+    id: refreshId || !expense.id ? (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`) : expense.id,
     amount,
     date: String(expense.date).slice(0, 10),
     category: categories.some((cat) => cat.id === expense.category) ? expense.category : "other",
@@ -1427,6 +1729,20 @@ function normalizeImportedExpense(expense) {
     note: String(expense.note || "").slice(0, 500),
     source: expense.source || "import",
     createdAt: expense.createdAt || new Date().toISOString()
+  };
+}
+
+function normalizeImportedEvent(item, refreshId = false) {
+  if (!item || !isValidDateString(item.date)) return null;
+  const title = String(item.title || "").trim();
+  if (!title) return null;
+  return {
+    id: refreshId || !item.id ? (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`) : item.id,
+    date: String(item.date).slice(0, 10),
+    title: title.slice(0, 80),
+    note: String(item.note || "").slice(0, 1000),
+    createdAt: item.createdAt || new Date().toISOString(),
+    updatedAt: item.updatedAt || item.createdAt || new Date().toISOString()
   };
 }
 
@@ -1448,7 +1764,7 @@ function seedDemoData() {
     merchant,
     amount,
     category,
-    date: new Date(start.getFullYear(), start.getMonth(), Math.min(day, today.getDate())).toISOString().slice(0, 10),
+    date: dateKeyFromDate(new Date(start.getFullYear(), start.getMonth(), Math.min(day, today.getDate()))),
     note: "示例数据",
     source: day % 2 ? "manual" : "receipt",
     createdAt: new Date().toISOString()
