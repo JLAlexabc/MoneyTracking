@@ -301,6 +301,27 @@ h2 {
   white-space: nowrap;
 }
 
+.day-total.level-minimal {
+  color: #6b746f;
+}
+
+.day-total.level-low {
+  color: #c37a22;
+}
+
+.day-total.level-medium {
+  color: #df6b57;
+}
+
+.day-total.level-high {
+  color: #b3322a;
+}
+
+.day-total.level-critical {
+  color: #681b1b;
+  text-shadow: 0 0 0.01px currentColor;
+}
+
 .day-event-preview {
   display: grid;
   gap: 3px;

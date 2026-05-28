@@ -989,7 +989,7 @@ function renderCalendar(expenses) {
     button.innerHTML = `
       <span class="calendar-day-head">
         <span class="day-number">${date.getDate()}</span>
-        ${total ? `<strong class="day-total">${currency.format(total)}</strong>` : ""}
+        ${total ? `<strong class="day-total ${expenseLevelClass(total)}">${currency.format(total)}</strong>` : ""}
       </span>
       ${dayEvents.length ? `<span class="day-event-preview">${dayEvents.slice(0, 3).map((item) => `<small>${escapeHtml(item.title)}</small>`).join("")}${dayEvents.length > 3 ? `<em>+${dayEvents.length - 3} 条</em>` : ""}</span>` : ""}
     `;
@@ -997,6 +997,14 @@ function renderCalendar(expenses) {
   }
 
   renderEventSummaries(monthEvents, yearEvents);
+}
+
+function expenseLevelClass(total) {
+  if (total >= 10000) return "level-critical";
+  if (total >= 1000) return "level-high";
+  if (total >= 100) return "level-medium";
+  if (total >= 10) return "level-low";
+  return "level-minimal";
 }
 
 function renderEventSummaries(monthEvents, yearEvents) {
