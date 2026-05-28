@@ -1,9 +1,9 @@
-const cacheName = "moneytracking-v29";
+const cacheName = "moneytracking-v30";
 const assets = [
   "./",
   "./index.html",
-  "./styles.css?v=29",
-  "./app.js?v=29",
+  "./styles.css?v=30",
+  "./app.js?v=30",
   "./manifest.webmanifest",
   "./icon.svg"
 ];

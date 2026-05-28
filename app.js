@@ -943,7 +943,7 @@ function renderCalendar(expenses) {
   });
 
   els.calendarTitle.textContent = `${formatMonth(state.activeMonth)}日历`;
-  els.calendarSummary.textContent = `本月 ${expenses.length} 笔开销，${monthEvents.length} 条重要纪要。点击日期即可添加纪要。`;
+  els.calendarSummary.textContent = `本月 ${expenses.length} 笔开销，合计 ${currency.format(sum(expenses.map((expense) => expense.amount)))}；${monthEvents.length} 条重要纪要。点击日期即可添加纪要。`;
   els.calendarGrid.innerHTML = "";
 
   for (let index = 0; index < 42; index += 1) {
@@ -958,11 +958,12 @@ function renderCalendar(expenses) {
     button.className = "calendar-day";
     button.classList.toggle("muted", !inMonth);
     button.classList.toggle("has-event", dayEvents.length > 0);
+    button.classList.toggle("has-expense", total > 0);
     button.classList.toggle("today", key === dateKeyFromDate(new Date()));
     button.dataset.date = key;
     button.innerHTML = `
       <span class="day-number">${date.getDate()}</span>
-      ${total ? `<strong>${currency.format(total)}</strong>` : ""}
+      ${total ? `<span class="day-spend"><b>开销</b><strong>${currency.format(total)}</strong></span>` : `<span class="day-spend empty">无开销</span>`}
       ${dayEvents.length ? `<small>${escapeHtml(dayEvents[0].title)}${dayEvents.length > 1 ? ` +${dayEvents.length - 1}` : ""}</small>` : ""}
     `;
     els.calendarGrid.append(button);
