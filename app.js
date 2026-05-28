@@ -24,6 +24,7 @@ const state = {
   activeMonth: monthKey(new Date()),
   mode: "manual",
   view: "calendar",
+  selectedDate: "",
   pendingImports: [],
   selectedCategoryId: "",
   authMode: "login",
@@ -65,6 +66,14 @@ const els = {
   editCategory: document.querySelector("#editCategory"),
   cancelEdit: document.querySelector("#cancelEdit"),
   cancelEditSecondary: document.querySelector("#cancelEditSecondary"),
+  dayModal: document.querySelector("#dayModal"),
+  dayModalTitle: document.querySelector("#dayModalTitle"),
+  dayModalSummary: document.querySelector("#dayModalSummary"),
+  closeDayModal: document.querySelector("#closeDayModal"),
+  addDayEvent: document.querySelector("#addDayEvent"),
+  addDayExpense: document.querySelector("#addDayExpense"),
+  dayEventsList: document.querySelector("#dayEventsList"),
+  dayExpensesList: document.querySelector("#dayExpensesList"),
   eventModal: document.querySelector("#eventModal"),
   eventForm: document.querySelector("#eventForm"),
   eventModalTitle: document.querySelector("#eventModalTitle"),
@@ -177,6 +186,11 @@ function init() {
   els.cancelEdit.addEventListener("click", closeEditModal);
   els.cancelEditSecondary.addEventListener("click", closeEditModal);
   els.eventForm.addEventListener("submit", saveEvent);
+  els.closeDayModal.addEventListener("click", closeDayModal);
+  els.addDayEvent.addEventListener("click", () => openEventModal(state.selectedDate || dateKeyFromDate(new Date())));
+  els.addDayExpense.addEventListener("click", addExpenseForSelectedDate);
+  els.dayEventsList.addEventListener("click", handleEventListClick);
+  els.dayExpensesList.addEventListener("click", handleDayExpenseClick);
   els.cancelEvent.addEventListener("click", closeEventModal);
   els.cancelEventSecondary.addEventListener("click", closeEventModal);
   els.deleteEvent.addEventListener("click", deleteCurrentEvent);
@@ -184,9 +198,7 @@ function init() {
   els.monthlyEvents.addEventListener("click", handleEventListClick);
   els.yearlyEvents.addEventListener("click", handleEventListClick);
   els.openEntry.addEventListener("click", () => {
-    if (state.view !== "dashboard") state.view = "dashboard";
-    setEntryDrawer(true);
-    render();
+    openExpenseEntryForDate(els.date.value || dateKeyFromDate(new Date()));
   });
   els.closeEntry.addEventListener("click", () => setEntryDrawer(false));
   els.closeCategoryDetail.addEventListener("click", () => {
@@ -269,6 +281,7 @@ function unlockProfile(hash) {
   state.events = loadEvents();
   state.activeMonth = monthKey(new Date());
   state.view = "calendar";
+  state.selectedDate = "";
   state.selectedCategoryId = "";
   state.pendingImports = [];
   els.authPassword.value = "";
@@ -284,9 +297,11 @@ function lockApp() {
   state.expenses = [];
   state.events = [];
   state.view = "calendar";
+  state.selectedDate = "";
   state.selectedCategoryId = "";
   state.pendingImports = [];
   setEntryDrawer(false);
+  closeDayModal();
   els.appShell.hidden = true;
   els.authScreen.hidden = false;
   switchAuthMode(getProfiles().length ? "login" : "create");
@@ -405,6 +420,15 @@ function switchView(view) {
   }
   render();
   window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function openExpenseEntryForDate(date) {
+  if (!isValidDateString(date)) return;
+  state.activeMonth = monthKey(date);
+  state.view = "dashboard";
+  els.date.value = date;
+  setEntryDrawer(true);
+  render();
 }
 
 function switchMode(mode) {
@@ -943,7 +967,7 @@ function renderCalendar(expenses) {
   });
 
   els.calendarTitle.textContent = `${formatMonth(state.activeMonth)}日历`;
-  els.calendarSummary.textContent = `本月 ${expenses.length} 笔开销，合计 ${currency.format(sum(expenses.map((expense) => expense.amount)))}；${monthEvents.length} 条重要纪要。点击日期即可添加纪要。`;
+  els.calendarSummary.textContent = `本月 ${expenses.length} 笔开销，合计 ${currency.format(sum(expenses.map((expense) => expense.amount)))}；${monthEvents.length} 条重要纪要。点击日期查看当天详情。`;
   els.calendarGrid.innerHTML = "";
 
   for (let index = 0; index < 42; index += 1) {
@@ -959,12 +983,15 @@ function renderCalendar(expenses) {
     button.classList.toggle("muted", !inMonth);
     button.classList.toggle("has-event", dayEvents.length > 0);
     button.classList.toggle("has-expense", total > 0);
+    button.classList.toggle("selected", key === state.selectedDate);
     button.classList.toggle("today", key === dateKeyFromDate(new Date()));
     button.dataset.date = key;
     button.innerHTML = `
-      <span class="day-number">${date.getDate()}</span>
-      ${total ? `<span class="day-spend"><b>开销</b><strong>${currency.format(total)}</strong></span>` : `<span class="day-spend empty">无开销</span>`}
-      ${dayEvents.length ? `<small>${escapeHtml(dayEvents[0].title)}${dayEvents.length > 1 ? ` +${dayEvents.length - 1}` : ""}</small>` : ""}
+      <span class="calendar-day-head">
+        <span class="day-number">${date.getDate()}</span>
+        ${total ? `<strong class="day-total">${currency.format(total)}</strong>` : ""}
+      </span>
+      ${dayEvents.length ? `<span class="day-event-preview">${dayEvents.slice(0, 3).map((item) => `<small>${escapeHtml(item.title)}</small>`).join("")}${dayEvents.length > 3 ? `<em>+${dayEvents.length - 3} 条</em>` : ""}</span>` : ""}
     `;
     els.calendarGrid.append(button);
   }
@@ -1008,7 +1035,66 @@ function renderEventList(events, emptyText = "") {
 function handleCalendarClick(event) {
   const day = event.target.closest(".calendar-day");
   if (!day) return;
-  openEventModal(day.dataset.date);
+  openDayModal(day.dataset.date);
+}
+
+function openDayModal(date) {
+  if (!isValidDateString(date)) return;
+  state.selectedDate = date;
+  state.activeMonth = monthKey(date);
+  render();
+
+  const events = state.events
+    .filter((item) => item.date === date)
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const expenses = state.expenses
+    .filter((item) => item.date === date)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const total = sum(expenses.map((item) => item.amount));
+
+  els.dayModalTitle.textContent = `${formatDateLabel(date)}详情`;
+  els.dayModalSummary.textContent = `${events.length} 条纪要，${expenses.length} 笔花销，合计 ${currency.format(total)}。`;
+  els.dayEventsList.innerHTML = events.length ? events.map((item) => `
+    <article class="day-detail-item">
+      <div>
+        <strong>${escapeHtml(item.title)}</strong>
+        ${item.note ? `<span>${escapeHtml(item.note)}</span>` : ""}
+      </div>
+      <button type="button" class="secondary-button" data-event-edit="${escapeHtml(item.id)}">编辑</button>
+    </article>
+  `).join("") : `<div class="empty-state">当天还没有重要纪要。</div>`;
+  els.dayExpensesList.innerHTML = expenses.length ? expenses.map((expense) => {
+    const cat = categories.find((item) => item.id === expense.category) || categories.at(-1);
+    return `
+      <article class="day-detail-item expense-detail">
+        <div class="record-icon" style="background:${cat.color}">${cat.icon}</div>
+        <div>
+          <strong>${escapeHtml(expense.merchant)}</strong>
+          <span>${cat.label}${expense.note ? ` · ${escapeHtml(expense.note)}` : ""}</span>
+        </div>
+        <strong>${currency.format(expense.amount)}</strong>
+        <button type="button" class="secondary-button" data-expense-edit="${escapeHtml(expense.id)}">编辑</button>
+      </article>
+    `;
+  }).join("") : `<div class="empty-state">当天还没有花销记录。</div>`;
+  els.dayModal.hidden = false;
+}
+
+function closeDayModal() {
+  els.dayModal.hidden = true;
+}
+
+function addExpenseForSelectedDate() {
+  const date = state.selectedDate || dateKeyFromDate(new Date());
+  closeDayModal();
+  openExpenseEntryForDate(date);
+}
+
+function handleDayExpenseClick(event) {
+  const editButton = event.target.closest("[data-expense-edit]");
+  if (!editButton) return;
+  closeDayModal();
+  openEditModal(editButton.dataset.expenseEdit);
 }
 
 function handleEventListClick(event) {
@@ -1027,6 +1113,7 @@ function handleEventListClick(event) {
 
 function openEventModal(date, id = "") {
   const existing = id ? state.events.find((item) => item.id === id) : null;
+  if (existing) state.selectedDate = existing.date;
   els.eventModalTitle.textContent = existing ? "编辑重要纪要" : "添加重要纪要";
   els.eventId.value = existing ? existing.id : "";
   els.eventDate.value = existing ? existing.date : date;
@@ -1074,6 +1161,9 @@ function saveEvent(event) {
   saveEvents();
   closeEventModal();
   render();
+  if (!els.dayModal.hidden && state.selectedDate === item.date) {
+    openDayModal(item.date);
+  }
 }
 
 function deleteCurrentEvent() {
@@ -1084,6 +1174,9 @@ function deleteCurrentEvent() {
   saveEvents();
   closeEventModal();
   render();
+  if (!els.dayModal.hidden && state.selectedDate) {
+    openDayModal(state.selectedDate);
+  }
 }
 
 function render() {
