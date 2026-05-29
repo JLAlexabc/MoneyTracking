@@ -7,7 +7,7 @@
     <meta name="description" content="生活开销记录、票据识别、分类统计与数据分析">
     <title>拾账 - 生活开销分析</title>
     <link rel="manifest" href="manifest.webmanifest">
-    <link rel="stylesheet" href="styles.css?v=32">
+    <link rel="stylesheet" href="styles.css?v=33">
   </head>
   <body>
     <section class="auth-screen" id="authScreen">
@@ -89,7 +89,7 @@
             <div class="panel event-summary-panel">
               <div class="panel-heading compact">
                 <div>
-                  <h2>本月重要纪要</h2>
+                  <h2>本月纪要</h2>
                   <p id="monthlyEventsSummary">暂无纪要</p>
                 </div>
               </div>
@@ -104,6 +104,16 @@
               </div>
               <div class="event-list yearly" id="yearlyEvents"></div>
             </div>
+          </section>
+
+          <section class="panel important-timeline-panel">
+            <div class="panel-heading compact">
+              <div>
+                <h2>重要时间线</h2>
+                <p id="importantTimelineSummary">暂无重要纪要</p>
+              </div>
+            </div>
+            <div class="important-timeline" id="importantTimeline"></div>
           </section>
         </section>
 
@@ -385,6 +395,13 @@
           <input id="eventTitle" type="text" maxlength="80" placeholder="例如：签约、旅行、体检" required>
         </label>
         <label>
+          <span>类型</span>
+          <select id="eventType" required>
+            <option value="normal">普通</option>
+            <option value="important">重要</option>
+          </select>
+        </label>
+        <label>
           <span>内容</span>
           <textarea id="eventNote" maxlength="1000" placeholder="补充地点、原因、结果或后续待办"></textarea>
         </label>
@@ -396,6 +413,6 @@
       </form>
     </div>
 
-    <script src="app.js?v=32"></script>
+    <script src="app.js?v=33"></script>
   </body>
 </html>

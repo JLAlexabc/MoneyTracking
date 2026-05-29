@@ -408,6 +408,10 @@ h2 {
   gap: 16px;
 }
 
+.important-timeline-panel {
+  padding: 18px;
+}
+
 .event-list {
   display: grid;
   gap: 10px;
@@ -425,6 +429,12 @@ h2 {
   background: white;
 }
 
+.event-item.important,
+.day-detail-item.important {
+  border-color: rgba(179, 50, 42, 0.36);
+  background: #fff8f6;
+}
+
 .event-item time {
   color: var(--brand);
   font-size: 0.86rem;
@@ -437,6 +447,89 @@ h2 {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.event-type-badge {
+  display: inline-grid;
+  min-height: 20px;
+  margin-left: 8px;
+  padding: 0 7px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-style: normal;
+  font-weight: 900;
+  vertical-align: 1px;
+}
+
+.event-type-badge.important {
+  background: #ffe2dc;
+  color: #9d2b24;
+}
+
+.important-timeline {
+  position: relative;
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+  padding-left: 18px;
+}
+
+.important-timeline::before {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 5px;
+  width: 2px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #df6b57, #681b1b);
+  content: "";
+}
+
+.timeline-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid rgba(179, 50, 42, 0.32);
+  border-radius: 8px;
+  background: #fff8f6;
+}
+
+.timeline-item::before {
+  position: absolute;
+  left: -18px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid white;
+  border-radius: 50%;
+  background: #b3322a;
+  box-shadow: 0 0 0 2px rgba(179, 50, 42, 0.2);
+  content: "";
+}
+
+.timeline-item time {
+  color: #9d2b24;
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.timeline-item strong,
+.timeline-item span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timeline-item span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.86rem;
 }
 
 .event-item span {
@@ -1244,6 +1337,11 @@ textarea:focus {
   }
 
   .event-item {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .timeline-item {
     grid-template-columns: 1fr;
     align-items: stretch;
   }

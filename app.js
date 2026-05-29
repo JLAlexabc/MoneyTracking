@@ -57,6 +57,8 @@ const els = {
   monthlyEventsSummary: document.querySelector("#monthlyEventsSummary"),
   yearlyEvents: document.querySelector("#yearlyEvents"),
   yearlyEventsSummary: document.querySelector("#yearlyEventsSummary"),
+  importantTimeline: document.querySelector("#importantTimeline"),
+  importantTimelineSummary: document.querySelector("#importantTimelineSummary"),
   exportEvents: document.querySelector("#exportEvents"),
   editModal: document.querySelector("#editModal"),
   editForm: document.querySelector("#editForm"),
@@ -80,6 +82,7 @@ const els = {
   eventId: document.querySelector("#eventId"),
   eventDate: document.querySelector("#eventDate"),
   eventTitle: document.querySelector("#eventTitle"),
+  eventType: document.querySelector("#eventType"),
   eventNote: document.querySelector("#eventNote"),
   cancelEvent: document.querySelector("#cancelEvent"),
   cancelEventSecondary: document.querySelector("#cancelEventSecondary"),
@@ -197,6 +200,7 @@ function init() {
   els.calendarGrid.addEventListener("click", handleCalendarClick);
   els.monthlyEvents.addEventListener("click", handleEventListClick);
   els.yearlyEvents.addEventListener("click", handleEventListClick);
+  els.importantTimeline.addEventListener("click", handleEventListClick);
   els.openEntry.addEventListener("click", () => {
     openExpenseEntryForDate(els.date.value || dateKeyFromDate(new Date()));
   });
@@ -997,6 +1001,7 @@ function renderCalendar(expenses) {
   }
 
   renderEventSummaries(monthEvents, yearEvents);
+  renderImportantTimeline(yearEvents);
 }
 
 function expenseLevelClass(total) {
@@ -1029,7 +1034,29 @@ function renderEventSummaries(monthEvents, yearEvents) {
 function renderEventList(events, emptyText = "") {
   if (!events.length) return emptyText ? `<div class="empty-state">${emptyText}</div>` : "";
   return events.map((item) => `
-    <article class="event-item">
+    <article class="event-item ${item.type === "important" ? "important" : ""}">
+      <time>${formatDateLabel(item.date)}</time>
+      <div>
+        <strong>${escapeHtml(item.title)}${eventTypeBadge(item)}</strong>
+        ${item.note ? `<span>${escapeHtml(item.note)}</span>` : ""}
+      </div>
+      <button type="button" class="secondary-button" data-event-edit="${escapeHtml(item.id)}">编辑</button>
+    </article>
+  `).join("");
+}
+
+function eventTypeBadge(item) {
+  const important = item.type === "important";
+  return `<i class="event-type-badge ${important ? "important" : ""}">${important ? "重要" : "普通"}</i>`;
+}
+
+function renderImportantTimeline(yearEvents) {
+  const important = yearEvents.filter((item) => item.type === "important");
+  els.importantTimelineSummary.textContent = important.length
+    ? `${state.activeMonth.slice(0, 4)} 年共 ${important.length} 条重要纪要`
+    : "暂无重要纪要";
+  els.importantTimeline.innerHTML = important.length ? important.map((item) => `
+    <article class="timeline-item">
       <time>${formatDateLabel(item.date)}</time>
       <div>
         <strong>${escapeHtml(item.title)}</strong>
@@ -1037,7 +1064,7 @@ function renderEventList(events, emptyText = "") {
       </div>
       <button type="button" class="secondary-button" data-event-edit="${escapeHtml(item.id)}">编辑</button>
     </article>
-  `).join("");
+  `).join("") : `<div class="empty-state">把纪要类型设为“重要”后，会在这里形成年度时间线。</div>`;
 }
 
 function handleCalendarClick(event) {
@@ -1063,9 +1090,9 @@ function openDayModal(date) {
   els.dayModalTitle.textContent = `${formatDateLabel(date)}详情`;
   els.dayModalSummary.textContent = `${events.length} 条纪要，${expenses.length} 笔花销，合计 ${currency.format(total)}。`;
   els.dayEventsList.innerHTML = events.length ? events.map((item) => `
-    <article class="day-detail-item">
+    <article class="day-detail-item ${item.type === "important" ? "important" : ""}">
       <div>
-        <strong>${escapeHtml(item.title)}</strong>
+        <strong>${escapeHtml(item.title)}${eventTypeBadge(item)}</strong>
         ${item.note ? `<span>${escapeHtml(item.note)}</span>` : ""}
       </div>
       <button type="button" class="secondary-button" data-event-edit="${escapeHtml(item.id)}">编辑</button>
@@ -1126,6 +1153,7 @@ function openEventModal(date, id = "") {
   els.eventId.value = existing ? existing.id : "";
   els.eventDate.value = existing ? existing.date : date;
   els.eventTitle.value = existing ? existing.title : "";
+  els.eventType.value = existing ? (existing.type || "normal") : "normal";
   els.eventNote.value = existing ? existing.note : "";
   els.deleteEvent.hidden = !existing;
   els.eventModal.hidden = false;
@@ -1150,6 +1178,7 @@ function saveEvent(event) {
     id: id || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())),
     date: els.eventDate.value,
     title,
+    type: els.eventType.value === "important" ? "important" : "normal",
     note: els.eventNote.value.trim(),
     createdAt: now,
     updatedAt: now
@@ -1842,6 +1871,7 @@ function normalizeImportedEvent(item, refreshId = false) {
     id: refreshId || !item.id ? (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`) : item.id,
     date: String(item.date).slice(0, 10),
     title: title.slice(0, 80),
+    type: item.type === "important" ? "important" : "normal",
     note: String(item.note || "").slice(0, 1000),
     createdAt: item.createdAt || new Date().toISOString(),
     updatedAt: item.updatedAt || item.createdAt || new Date().toISOString()
