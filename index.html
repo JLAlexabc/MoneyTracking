@@ -7,7 +7,7 @@
     <meta name="description" content="生活开销记录、票据识别、分类统计与数据分析">
     <title>拾账 - 生活开销分析</title>
     <link rel="manifest" href="manifest.webmanifest">
-    <link rel="stylesheet" href="styles.css?v=34">
+    <link rel="stylesheet" href="styles.css?v=35">
   </head>
   <body>
     <section class="auth-screen" id="authScreen">
@@ -361,11 +361,11 @@
         </div>
         <div class="day-modal-actions">
           <button type="button" class="primary-button" id="addDayEvent">添加纪要</button>
-          <button type="button" class="secondary-button" id="addDayExpense">添加花销</button>
+          <button type="button" class="secondary-button" id="addDayExpense">添加花销到此日期</button>
         </div>
         <div class="day-detail-grid">
           <section>
-            <h3>重要纪要</h3>
+            <h3>当天纪要</h3>
             <div class="day-detail-list" id="dayEventsList"></div>
           </section>
           <section>
@@ -380,7 +380,7 @@
       <form class="modal-card" id="eventForm">
         <div class="panel-heading compact">
           <div>
-            <h2 id="eventModalTitle">添加重要纪要</h2>
+            <h2 id="eventModalTitle">添加纪要</h2>
             <p>记录当天值得留意的事情，之后可按月或按年查看。</p>
           </div>
           <button type="button" class="icon-button close-entry" id="cancelEvent" aria-label="关闭纪要">×</button>
@@ -425,6 +425,6 @@
       </form>
     </div>
 
-    <script src="app.js?v=34"></script>
+    <script src="app.js?v=35"></script>
   </body>
 </html>

@@ -1010,7 +1010,7 @@ function renderCalendar(expenses) {
         <span class="day-number">${date.getDate()}</span>
         ${total ? `<strong class="day-total ${expenseLevelClass(total)}">${currency.format(total)}</strong>` : ""}
       </span>
-      ${dayEvents.length ? `<span class="day-event-preview">${dayEvents.slice(0, 3).map((item) => `<small class="${item.type === "important" ? "important" : ""}">${escapeHtml(item.title)}</small>`).join("")}${dayEvents.length > 3 ? `<em>+${dayEvents.length - 3} 条</em>` : ""}</span>` : ""}
+      ${dayEvents.length ? `<span class="day-event-preview">${renderCalendarEventPreview(dayEvents)}</span>` : ""}
     `;
     els.calendarGrid.append(button);
   }
@@ -1025,6 +1025,19 @@ function expenseLevelClass(total) {
   if (total >= 100) return "level-medium";
   if (total >= 10) return "level-low";
   return "level-minimal";
+}
+
+function renderCalendarEventPreview(events) {
+  const importantCount = events.filter((item) => item.type === "important").length;
+  const preview = events.slice(0, 3).map((item) => (
+    `<small class="${item.type === "important" ? "important" : ""}">${escapeHtml(item.title)}</small>`
+  )).join("");
+  const hiddenCount = Math.max(0, events.length - 3);
+  const meta = [
+    hiddenCount ? `+${hiddenCount} 条` : "",
+    importantCount ? `${importantCount} 重要` : ""
+  ].filter(Boolean).join(" · ");
+  return `${preview}${meta ? `<em>${meta}</em>` : ""}`;
 }
 
 function renderEventSummaries(monthEvents, yearEvents) {
@@ -1070,15 +1083,27 @@ function renderImportantTimeline(yearEvents) {
   els.importantTimelineSummary.textContent = important.length
     ? `${state.activeMonth.slice(0, 4)} 年共 ${important.length} 条重要纪要`
     : "暂无重要纪要";
-  els.importantTimeline.innerHTML = important.length ? important.map((item) => `
-    <article class="timeline-item">
-      <time>${formatDateLabel(item.date)}</time>
-      <div>
-        <strong>${escapeHtml(item.title)}</strong>
-        ${item.note ? `<span>${escapeHtml(item.note)}</span>` : ""}
-      </div>
-      <button type="button" class="secondary-button" data-event-edit="${escapeHtml(item.id)}">编辑</button>
-    </article>
+  const groups = Array.from({ length: 12 }, (_, index) => {
+    const month = String(index + 1).padStart(2, "0");
+    return {
+      month: index + 1,
+      items: important.filter((item) => item.date.slice(5, 7) === month)
+    };
+  }).filter((group) => group.items.length);
+  els.importantTimeline.innerHTML = groups.length ? groups.map((group) => `
+    <section class="timeline-month">
+      <h3>${group.month}月</h3>
+      ${group.items.map((item) => `
+        <article class="timeline-item">
+          <time>${formatDateLabel(item.date)}</time>
+          <div>
+            <strong>${escapeHtml(item.title)}</strong>
+            ${item.note ? `<span>${escapeHtml(item.note)}</span>` : ""}
+          </div>
+          <button type="button" class="secondary-button" data-event-edit="${escapeHtml(item.id)}">编辑</button>
+        </article>
+      `).join("")}
+    </section>
   `).join("") : `<div class="empty-state">把纪要类型设为“重要”后，会在这里形成年度时间线。</div>`;
 }
 
@@ -1112,7 +1137,7 @@ function openDayModal(date) {
       </div>
       <button type="button" class="secondary-button" data-event-edit="${escapeHtml(item.id)}">编辑</button>
     </article>
-  `).join("") : `<div class="empty-state">当天还没有重要纪要。</div>`;
+  `).join("") : `<div class="empty-state">当天还没有纪要。</div>`;
   els.dayExpensesList.innerHTML = expenses.length ? expenses.map((expense) => {
     const cat = categories.find((item) => item.id === expense.category) || categories.at(-1);
     return `
@@ -1164,7 +1189,7 @@ function handleEventListClick(event) {
 function openEventModal(date, id = "") {
   const existing = id ? state.events.find((item) => item.id === id) : null;
   if (existing) state.selectedDate = existing.date;
-  els.eventModalTitle.textContent = existing ? "编辑重要纪要" : "添加重要纪要";
+  els.eventModalTitle.textContent = existing ? "编辑纪要" : "添加纪要";
   els.eventId.value = existing ? existing.id : "";
   els.eventDate.value = existing ? existing.date : date;
   els.eventTitle.value = existing ? existing.title : "";
