@@ -1062,11 +1062,11 @@ function renderEventSummaries(monthEvents, yearEvents) {
 function renderEventList(events, emptyText = "") {
   if (!events.length) return emptyText ? `<div class="empty-state">${emptyText}</div>` : "";
   return events.map((item) => `
-    <article class="event-item ${item.type === "important" ? "important" : ""}">
+    <article class="event-item ${item.type === "important" ? "important" : ""}" ${item.note ? "data-expandable" : ""}>
       <time>${formatDateLabel(item.date)}</time>
       <div>
         <strong>${escapeHtml(item.title)}${eventTypeBadge(item)}</strong>
-        ${item.note ? `<span>${escapeHtml(item.note)}</span>` : ""}
+        ${item.note ? `<span class="detail-hint">点击查看详情</span><p class="item-detail" hidden>${escapeHtml(item.note)}</p>` : ""}
       </div>
       <button type="button" class="secondary-button" data-event-edit="${escapeHtml(item.id)}">编辑</button>
     </article>
@@ -1094,11 +1094,11 @@ function renderImportantTimeline(yearEvents) {
     <section class="timeline-month">
       <h3>${group.month}月</h3>
       ${group.items.map((item) => `
-        <article class="timeline-item">
+        <article class="timeline-item" ${item.note ? "data-expandable" : ""}>
           <time>${formatDateLabel(item.date)}</time>
           <div>
             <strong>${escapeHtml(item.title)}</strong>
-            ${item.note ? `<span>${escapeHtml(item.note)}</span>` : ""}
+            ${item.note ? `<span class="detail-hint">点击查看详情</span><p class="item-detail" hidden>${escapeHtml(item.note)}</p>` : ""}
           </div>
           <button type="button" class="secondary-button" data-event-edit="${escapeHtml(item.id)}">编辑</button>
         </article>
@@ -1130,10 +1130,10 @@ function openDayModal(date) {
   els.dayModalTitle.textContent = `${formatDateLabel(date)}详情`;
   els.dayModalSummary.textContent = `${events.length} 条纪要，${expenses.length} 笔花销，合计 ${currency.format(total)}。`;
   els.dayEventsList.innerHTML = events.length ? events.map((item) => `
-    <article class="day-detail-item ${item.type === "important" ? "important" : ""}">
+    <article class="day-detail-item ${item.type === "important" ? "important" : ""}" ${item.note ? "data-expandable" : ""}>
       <div>
         <strong>${escapeHtml(item.title)}${eventTypeBadge(item)}</strong>
-        ${item.note ? `<span>${escapeHtml(item.note)}</span>` : ""}
+        ${item.note ? `<span class="detail-hint">点击查看详情</span><p class="item-detail" hidden>${escapeHtml(item.note)}</p>` : ""}
       </div>
       <button type="button" class="secondary-button" data-event-edit="${escapeHtml(item.id)}">编辑</button>
     </article>
@@ -1141,11 +1141,12 @@ function openDayModal(date) {
   els.dayExpensesList.innerHTML = expenses.length ? expenses.map((expense) => {
     const cat = categories.find((item) => item.id === expense.category) || categories.at(-1);
     return `
-      <article class="day-detail-item expense-detail">
+      <article class="day-detail-item expense-detail" ${expense.note ? "data-expandable" : ""}>
         <div class="record-icon" style="background:${cat.color}">${cat.icon}</div>
         <div>
           <strong>${escapeHtml(expense.merchant)}</strong>
-          <span>${cat.label}${expense.note ? ` · ${escapeHtml(expense.note)}` : ""}</span>
+          <span>${cat.label}${expense.note ? " · 点击查看详情" : ""}</span>
+          ${expense.note ? `<p class="item-detail" hidden>${escapeHtml(expense.note)}</p>` : ""}
         </div>
         <strong>${currency.format(expense.amount)}</strong>
         <button type="button" class="secondary-button" data-expense-edit="${escapeHtml(expense.id)}">编辑</button>
@@ -1167,9 +1168,12 @@ function addExpenseForSelectedDate() {
 
 function handleDayExpenseClick(event) {
   const editButton = event.target.closest("[data-expense-edit]");
-  if (!editButton) return;
-  closeDayModal();
-  openEditModal(editButton.dataset.expenseEdit);
+  if (editButton) {
+    closeDayModal();
+    openEditModal(editButton.dataset.expenseEdit);
+    return;
+  }
+  toggleItemDetail(event.target.closest("[data-expandable]"));
 }
 
 function handleEventListClick(event) {
@@ -1183,7 +1187,20 @@ function handleEventListClick(event) {
     const year = state.activeMonth.slice(0, 4);
     state.activeMonth = `${year}-${String(monthButton.dataset.month).padStart(2, "0")}`;
     render();
+    return;
   }
+  toggleItemDetail(event.target.closest("[data-expandable]"));
+}
+
+function toggleItemDetail(item) {
+  if (!item) return;
+  const detail = item.querySelector(".item-detail");
+  if (!detail) return;
+  const expanded = detail.hidden;
+  detail.hidden = !expanded;
+  item.classList.toggle("expanded", expanded);
+  const hint = item.querySelector(".detail-hint");
+  if (hint) hint.textContent = expanded ? "收起详情" : "点击查看详情";
 }
 
 function openEventModal(date, id = "") {

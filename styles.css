@@ -406,23 +406,56 @@ h2 {
 }
 
 .day-detail-item strong,
-.day-detail-item span {
+.day-detail-item span,
+.event-item strong,
+.event-item span,
+.timeline-item strong,
+.timeline-item span {
   display: block;
   overflow-wrap: anywhere;
 }
 
-.day-detail-item strong {
+.day-detail-item strong,
+.event-item strong,
+.timeline-item strong {
   display: -webkit-box;
   overflow: hidden;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
 }
 
-.day-detail-item span {
+.day-detail-item span,
+.event-item span,
+.timeline-item span {
   margin-top: 3px;
   color: var(--muted);
   font-size: 0.86rem;
   line-height: 1.35;
+}
+
+.detail-hint {
+  color: var(--brand) !important;
+  font-size: 0.8rem !important;
+  font-weight: 850;
+}
+
+.item-detail {
+  margin: 8px 0 0;
+  padding: 9px 10px;
+  border-radius: 8px;
+  background: rgba(237, 245, 242, 0.7);
+  color: var(--ink);
+  font-size: 0.88rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+[data-expandable] {
+  cursor: pointer;
+}
+
+[data-expandable].expanded {
+  align-items: start;
 }
 
 .calendar-summary-grid {
@@ -469,14 +502,6 @@ h2 {
   color: var(--brand);
   font-size: 0.86rem;
   font-weight: 900;
-}
-
-.event-item strong,
-.event-item span {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .event-type-badge {
@@ -557,26 +582,6 @@ h2 {
   color: #9d2b24;
   font-size: 0.86rem;
   font-weight: 900;
-}
-
-.timeline-item strong,
-.timeline-item span {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.timeline-item span {
-  margin-top: 3px;
-  color: var(--muted);
-  font-size: 0.86rem;
-}
-
-.event-item span {
-  margin-top: 3px;
-  color: var(--muted);
-  font-size: 0.86rem;
 }
 
 .event-month-group {
