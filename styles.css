@@ -265,6 +265,13 @@ h2 {
   background: linear-gradient(180deg, #ffffff 0%, #eef7f4 100%);
 }
 
+.calendar-day.selected,
+.calendar-day.selected.has-event {
+  border-color: var(--brand);
+  background: #e8f4f1;
+  box-shadow: inset 0 0 0 2px rgba(15, 107, 99, 0.2), 0 10px 24px rgba(15, 107, 99, 0.14);
+}
+
 .calendar-day.has-expense {
   border-color: rgba(223, 107, 87, 0.42);
 }
@@ -346,13 +353,23 @@ h2 {
   font-weight: 800;
 }
 
+.day-event-preview small.important {
+  color: #9d2b24;
+  font-weight: 900;
+}
+
 .day-modal-card {
   width: min(820px, 100%);
 }
 
 .day-modal-actions {
+  position: sticky;
+  top: -18px;
+  z-index: 1;
   display: flex;
   gap: 10px;
+  padding: 2px 0 10px;
+  background: linear-gradient(180deg, white 72%, rgba(255, 255, 255, 0));
 }
 
 .day-detail-grid {
@@ -433,6 +450,13 @@ h2 {
 .day-detail-item.important {
   border-color: rgba(179, 50, 42, 0.36);
   background: #fff8f6;
+}
+
+.event-item:hover,
+.day-detail-item:hover,
+.timeline-item:hover {
+  border-color: rgba(15, 107, 99, 0.34);
+  box-shadow: 0 8px 18px rgba(35, 48, 43, 0.08);
 }
 
 .event-item time {
@@ -709,6 +733,116 @@ label span,
 label {
   display: grid;
   gap: 7px;
+}
+
+.choice-field {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.choice-field > span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.choice-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.category-choice-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.category-choice-grid.compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.event-type-choice-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.choice-card {
+  position: relative;
+  display: grid;
+  min-width: 0;
+}
+
+.choice-card input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.choice-card > span {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  min-width: 0;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  color: var(--ink);
+  font-weight: 850;
+  transition: border-color 140ms ease, background 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.choice-card:hover > span {
+  border-color: rgba(15, 107, 99, 0.42);
+  transform: translateY(-1px);
+}
+
+.choice-card input:checked + span {
+  border-color: var(--brand);
+  background: var(--surface-soft);
+  color: var(--brand-dark);
+  box-shadow: inset 0 0 0 1px rgba(15, 107, 99, 0.24);
+}
+
+.choice-card.important-choice input:checked + span {
+  border-color: #df6b57;
+  background: #fff1ed;
+  color: #9d2b24;
+}
+
+.choice-card input:focus-visible + span {
+  outline: 3px solid rgba(15, 107, 99, 0.18);
+  outline-offset: 2px;
+}
+
+.choice-card strong,
+.choice-card small {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.choice-card small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.choice-icon {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 8px;
+  color: white;
+  font-size: 0.82rem;
+  font-style: normal;
+  font-weight: 900;
 }
 
 input,
@@ -1192,10 +1326,13 @@ textarea:focus {
   display: grid;
   gap: 14px;
   width: min(520px, 100%);
+  max-height: min(88vh, 760px);
+  overflow: auto;
   padding: 18px;
   border-radius: 8px;
   background: white;
   box-shadow: var(--shadow);
+  overscroll-behavior: contain;
 }
 
 .modal-actions {
@@ -1256,6 +1393,17 @@ textarea:focus {
   .quick-stats,
   .field-row {
     grid-template-columns: 1fr;
+  }
+
+  .category-choice-grid,
+  .category-choice-grid.compact,
+  .event-type-choice-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .choice-card > span {
+    min-height: 46px;
+    padding: 8px;
   }
 
   .hero-metric {
@@ -1334,6 +1482,11 @@ textarea:focus {
 
   .day-modal-actions {
     flex-direction: column;
+  }
+
+  .day-modal-actions .primary-button,
+  .day-modal-actions .secondary-button {
+    width: 100%;
   }
 
   .event-item {

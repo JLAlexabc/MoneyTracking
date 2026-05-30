@@ -65,7 +65,7 @@ const els = {
   editId: document.querySelector("#editId"),
   editMerchant: document.querySelector("#editMerchant"),
   editAmount: document.querySelector("#editAmount"),
-  editCategory: document.querySelector("#editCategory"),
+  editCategoryChoices: document.querySelector("#editCategoryChoices"),
   cancelEdit: document.querySelector("#cancelEdit"),
   cancelEditSecondary: document.querySelector("#cancelEditSecondary"),
   dayModal: document.querySelector("#dayModal"),
@@ -82,7 +82,7 @@ const els = {
   eventId: document.querySelector("#eventId"),
   eventDate: document.querySelector("#eventDate"),
   eventTitle: document.querySelector("#eventTitle"),
-  eventType: document.querySelector("#eventType"),
+  eventTypeChoices: document.querySelector("#eventTypeChoices"),
   eventNote: document.querySelector("#eventNote"),
   cancelEvent: document.querySelector("#cancelEvent"),
   cancelEventSecondary: document.querySelector("#cancelEventSecondary"),
@@ -105,7 +105,7 @@ const els = {
   categoryDetailStats: document.querySelector("#categoryDetailStats"),
   categoryDetailRecords: document.querySelector("#categoryDetailRecords"),
   closeCategoryDetail: document.querySelector("#closeCategoryDetail"),
-  category: document.querySelector("#category"),
+  categoryChoices: document.querySelector("#categoryChoices"),
   expenseForm: document.querySelector("#expenseForm"),
   amount: document.querySelector("#amount"),
   date: document.querySelector("#date"),
@@ -152,17 +152,8 @@ const chartState = {
 
 function init() {
   els.date.value = dateKeyFromDate(new Date());
-  categories.forEach((cat) => {
-    const option = document.createElement("option");
-    option.value = cat.id;
-    option.textContent = cat.label;
-    els.category.append(option);
-
-    const editOption = document.createElement("option");
-    editOption.value = cat.id;
-    editOption.textContent = cat.label;
-    els.editCategory.append(editOption);
-  });
+  renderCategoryChoices(els.categoryChoices, "categoryChoice", "food");
+  renderCategoryChoices(els.editCategoryChoices, "editCategoryChoice", "food");
   for (let month = 1; month <= 12; month += 1) {
     const option = document.createElement("option");
     option.value = String(month);
@@ -234,6 +225,30 @@ function init() {
     navigator.serviceWorker.register("sw.js").catch(() => {});
   }
   switchAuthMode(getProfiles().length ? "login" : "create");
+}
+
+function renderCategoryChoices(container, name, selectedValue) {
+  container.innerHTML = categories.map((cat) => `
+    <label class="choice-card category-choice">
+      <input type="radio" name="${name}" value="${cat.id}" ${cat.id === selectedValue ? "checked" : ""}>
+      <span>
+        <i class="choice-icon" style="background:${cat.color}">${cat.icon}</i>
+        <strong>${cat.label}</strong>
+      </span>
+    </label>
+  `).join("");
+}
+
+function getRadioValue(container, fallback = "") {
+  return container.querySelector("input[type='radio']:checked")?.value || fallback;
+}
+
+function setRadioValue(container, value, fallback = "") {
+  const radios = Array.from(container.querySelectorAll("input[type='radio']"));
+  const radio = radios.find((item) => item.value === value)
+    || radios.find((item) => item.value === fallback)
+    || radios[0];
+  if (radio) radio.checked = true;
 }
 
 function switchAuthMode(mode) {
@@ -452,7 +467,7 @@ function addExpense(event) {
     id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
     amount,
     date: els.date.value,
-    category: els.category.value,
+    category: getRadioValue(els.categoryChoices, "food"),
     merchant: els.merchant.value.trim() || "未命名支出",
     note: els.note.value.trim(),
     source: state.mode,
@@ -462,7 +477,7 @@ function addExpense(event) {
   saveExpenses();
   els.expenseForm.reset();
   els.date.value = dateKeyFromDate(new Date());
-  els.category.value = "food";
+  setRadioValue(els.categoryChoices, "food", "food");
   els.receiptPreview.hidden = true;
   els.ocrStatus.textContent = "支持 JPG、PNG、HEIC，并可拆分信用卡流水";
   renderReceiptItems([]);
@@ -628,7 +643,7 @@ function applyReceiptText(text) {
   }
 
   const suggestedCategory = suggestCategory(text);
-  els.category.value = suggestedCategory.id;
+  setRadioValue(els.categoryChoices, suggestedCategory.id, "other");
 
   const merchant = extractMerchant(text);
   if (merchant && !els.merchant.value) els.merchant.value = merchant;
@@ -995,7 +1010,7 @@ function renderCalendar(expenses) {
         <span class="day-number">${date.getDate()}</span>
         ${total ? `<strong class="day-total ${expenseLevelClass(total)}">${currency.format(total)}</strong>` : ""}
       </span>
-      ${dayEvents.length ? `<span class="day-event-preview">${dayEvents.slice(0, 3).map((item) => `<small>${escapeHtml(item.title)}</small>`).join("")}${dayEvents.length > 3 ? `<em>+${dayEvents.length - 3} 条</em>` : ""}</span>` : ""}
+      ${dayEvents.length ? `<span class="day-event-preview">${dayEvents.slice(0, 3).map((item) => `<small class="${item.type === "important" ? "important" : ""}">${escapeHtml(item.title)}</small>`).join("")}${dayEvents.length > 3 ? `<em>+${dayEvents.length - 3} 条</em>` : ""}</span>` : ""}
     `;
     els.calendarGrid.append(button);
   }
@@ -1153,7 +1168,7 @@ function openEventModal(date, id = "") {
   els.eventId.value = existing ? existing.id : "";
   els.eventDate.value = existing ? existing.date : date;
   els.eventTitle.value = existing ? existing.title : "";
-  els.eventType.value = existing ? (existing.type || "normal") : "normal";
+  setEventType(existing ? (existing.type || "normal") : "normal");
   els.eventNote.value = existing ? existing.note : "";
   els.deleteEvent.hidden = !existing;
   els.eventModal.hidden = false;
@@ -1164,7 +1179,18 @@ function closeEventModal() {
   els.eventModal.hidden = true;
   els.eventForm.reset();
   els.eventId.value = "";
+  setEventType("normal");
   els.deleteEvent.hidden = true;
+}
+
+function setEventType(type) {
+  setRadioValue(els.eventTypeChoices, type, "normal");
+}
+
+function getEventType() {
+  return getRadioValue(els.eventTypeChoices, "normal") === "important"
+    ? "important"
+    : "normal";
 }
 
 function saveEvent(event) {
@@ -1178,7 +1204,7 @@ function saveEvent(event) {
     id: id || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())),
     date: els.eventDate.value,
     title,
-    type: els.eventType.value === "important" ? "important" : "normal",
+    type: getEventType(),
     note: els.eventNote.value.trim(),
     createdAt: now,
     updatedAt: now
@@ -1741,7 +1767,7 @@ function openEditModal(id) {
   els.editId.value = expense.id;
   els.editMerchant.value = expense.merchant;
   els.editAmount.value = Number(expense.amount).toFixed(2);
-  els.editCategory.value = expense.category;
+  setRadioValue(els.editCategoryChoices, expense.category, "other");
   els.editModal.hidden = false;
   window.setTimeout(() => els.editMerchant.focus(), 0);
 }
@@ -1762,7 +1788,7 @@ function saveEditedExpense(event) {
     ...state.expenses[index],
     merchant: els.editMerchant.value.trim() || "未命名支出",
     amount,
-    category: els.editCategory.value
+    category: getRadioValue(els.editCategoryChoices, "other")
   };
   saveExpenses();
   closeEditModal();

@@ -7,7 +7,7 @@
     <meta name="description" content="生活开销记录、票据识别、分类统计与数据分析">
     <title>拾账 - 生活开销分析</title>
     <link rel="manifest" href="manifest.webmanifest">
-    <link rel="stylesheet" href="styles.css?v=33">
+    <link rel="stylesheet" href="styles.css?v=34">
   </head>
   <body>
     <section class="auth-screen" id="authScreen">
@@ -232,10 +232,10 @@
                 </label>
               </div>
 
-              <label>
+              <fieldset class="choice-field">
                 <span>类别</span>
-                <select id="category" name="category" required></select>
-              </label>
+                <div class="choice-grid category-choice-grid" id="categoryChoices" role="radiogroup" aria-label="开销类别"></div>
+              </fieldset>
 
               <label>
                 <span>商家或备注</span>
@@ -338,11 +338,11 @@
             <span>金额</span>
             <input id="editAmount" type="number" min="0" step="0.01" inputmode="decimal" required>
           </label>
-          <label>
-            <span>类别</span>
-            <select id="editCategory" required></select>
-          </label>
         </div>
+        <fieldset class="choice-field">
+          <span>类别</span>
+          <div class="choice-grid category-choice-grid compact" id="editCategoryChoices" role="radiogroup" aria-label="编辑开销类别"></div>
+        </fieldset>
         <div class="modal-actions">
           <button type="button" class="secondary-button" id="cancelEditSecondary">取消</button>
           <button type="submit" class="primary-button">保存修改</button>
@@ -394,13 +394,25 @@
           <span>标题</span>
           <input id="eventTitle" type="text" maxlength="80" placeholder="例如：签约、旅行、体检" required>
         </label>
-        <label>
+        <fieldset class="choice-field">
           <span>类型</span>
-          <select id="eventType" required>
-            <option value="normal">普通</option>
-            <option value="important">重要</option>
-          </select>
-        </label>
+          <div class="choice-grid event-type-choice-grid" id="eventTypeChoices" role="radiogroup" aria-label="纪要类型">
+            <label class="choice-card">
+              <input type="radio" name="eventType" value="normal" checked>
+              <span>
+                <strong>普通</strong>
+                <small>日常记录，出现在每日和月度纪要中</small>
+              </span>
+            </label>
+            <label class="choice-card important-choice">
+              <input type="radio" name="eventType" value="important">
+              <span>
+                <strong>重要</strong>
+                <small>进入年度重要时间线</small>
+              </span>
+            </label>
+          </div>
+        </fieldset>
         <label>
           <span>内容</span>
           <textarea id="eventNote" maxlength="1000" placeholder="补充地点、原因、结果或后续待办"></textarea>
@@ -413,6 +425,6 @@
       </form>
     </div>
 
-    <script src="app.js?v=33"></script>
+    <script src="app.js?v=34"></script>
   </body>
 </html>
